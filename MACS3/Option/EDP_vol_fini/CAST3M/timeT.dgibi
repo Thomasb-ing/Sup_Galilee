@@ -1,0 +1,62 @@
+OPTI 'REST' 'formation_debutant_1_maillage.sauv' ;
+REST ;
+
+lambda = 2100 ;
+cp = 900. ;
+ro = 2700. ;
+
+*Temperature initiale
+T0 = 25. ;
+
+*Formulation mathematique et creation des matrices et flux
+mot1 = 'MODE' su 'THERMIQUE' ;
+mat = 'MATE' mot1 'K' lambda 'C' cp 'RHO' ro ;
+
+*Calcul de la matrice dd conductivité (premier membre)
+con = 'COND' mot1 mat ;
+
+*Calcul de la matrice de capacité
+cap ='CAPA' mot1 mat ;
+
+*Conditions aux limites
+*Matrice de blocage ou de ma condition limite de type Dirichlet
+blT = BLOQ ce 'T' ; 
+Tmax = 250. ;
+flT1 = DEPI blT Tmax ; 
+
+*Flux impose sur la ligne droite 
+*Flux impose sur la ligne gauche 
+*flT2 = FLUX moT1 (liEF) -3.5e4 ;  
+flT3 = FLUX moT1 (liGA) -3.5e4 ;  
+
+*Resolution du syteme lineaire 
+Tcon = RESO (con 'ET' blT) (flT1 'ET' flt3) ; 
+
+*****************************************************
+*Boucle qui integre dans le temps notre equation thermique
+******************************************************
+
+Tem_i = 'MANU' 'CHPO' 1 su 'T' T0 ;
+tab_T = 'TABL' ;
+tab_T . 0 =Tem_i ;
+
+time = 20000 ;
+dt = 100. ;
+NN ='ENTI' (time '/' dt);
+
+*PREMIER MEMBRE
+mgau = (((cap / dt) 'ET' con)) 'ET' blt ;
+
+'REPE' ii NN ;
+	dro_i = (Tem_i '*' (cap '/' dt)) '+' (flT1 '+' flT3) ;
+   	Tem_i1 = 'RESO' mgau dro_i;
+	Tem_i = Tem_i1 ;
+	tab_T . (&ii) =Tem_i ;
+fin ii ;
+
+LISO1 =  PROG 0. 'PAS' (250./15.) 250.;
+
+*SAUVEGARDE
+OPTI 'SAUV' 'tableau_temps.sauv';
+SAUV;
+FIN;

@@ -1,0 +1,312 @@
+---
+title: 'TP `R` 1: Tests statistiques'
+author: Gabin Jean Claude"
+date: "Statistiques biomÃ©dicales"
+output:
+  html_document:
+    toc: yes
+    toc_depth: 2
+  pdf_document:
+    toc: yes
+    toc_depth: '2'
+subtitle: ''
+header-includes: \usepackage[french]{babel}
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+**Exercice 1: Analyse de data frame**
+
+**a. Naissance:**
+
+C'est une base de donnée contenant la taille (en cm) et le sexe
+(1=masculin, 2=féminin) des nouveau-nés français en 2019.
+
+Naît-il plus de filles ou de garçons ? Y a-t-il une différence de taille
+à la naissance ?
+
+```{r}
+data=read.csv("Naiss_fr_2019.csv")
+
+summary(data)
+
+data$SEXE = factor(data$SEXE)
+
+summary(data)
+
+```
+
+Il y a un plus de garçons que de filles : 52.4 % ie un écart de 5%.
+
+```{r}
+
+boxplot(data$TAILLE ~ data$SEXE, xlab = 'Sexe', ylab = 'Taille', names= c('Garçons', 'Filles'))
+print('Filles')
+summary(data$TAILLE[which(data$SEXE == 1)])
+print('Garçons')
+summary(data$TAILLE[which(data$SEXE == 2)])
+
+```
+
+Les filles sont légèrement plus petites que les garçons.
+
+En utilisant les tests.
+
+```{r}
+binom.test(summary(data$SEXE)[1], nrow(data), 0.5, alternative =  'l', conf.level = 0.95)
+```
+
+p_value of 1 for H0 = 'la probabilité de naître garçon \> 0.5' : on ne
+peut pas rejeter H0.
+
+```{r}
+xm = data$TAILLE[which(data$SEXE == 1)]
+xf = data$TAILLE[which(data$SEXE == 2)]
+shapiro.test(xm[1:4999])
+shapiro.test(xf[1:4999])
+
+mean_test2(xm, xf, side = -1)
+```
+
+On teste la normalité de la taille pour les deux sexes, à partir des
+5000 premiers individus. Au vu des p-valeurs, on ne peut pas rejeter
+l'hypothèse de normalité.
+
+On teste alors l'hypothèse H0 : 'la taille moyenne d'un garçon est
+supérieure à celle d'une fille".
+
+La p-valeur valant 1, on ne peut pas rejeter H0.
+
+**b. Espérance de vie:**
+
+Le jeu de données suivant rassemble des informations sur des décès. On
+notera que la variable `SEXE` a été équilibrée ("autant" de femmes, que
+d'hommes dans chaque catégorie social). Il n'est donc pas possible
+d'étudier la répartition des hommes et des femmes dans ces catégories.
+
+-   `AGE`: âge de la personne décédée;
+-   `CLASSE`: la catégorie sociale du décédé;
+-   `SEXE`: 1, pour les hommes, 2, pour les femmes;
+-   `DATE`: date approximative du décès (3 classes).
+
+```{r,eval=FALSE}
+data = read.csv("Life_expectancy_large.csv")
+```
+
+```{r}
+data$CLASSE = factor(data$CLASSE)
+data$SEXE = factor(data$SEXE)
+summary(data)
+```
+
+```{r}
+boxplot(data$AGE ~ data$SEXE, ylab = "Age du décès", xlab= "Sexe", names = c('Hommes', 'Femmes'))
+```
+
+L'espérance de vie est de 79.4.
+
+Les femmes semblent vivre plus longtemps que les hommes.
+
+```{r}
+xm = data$AGE[which(data$SEXE == 1)]
+xf = data$AGE[which(data$SEXE == 2)]
+shapiro.test(xm)
+shapiro.test(xf)
+
+mean_test2(xm, xf, side = 1)
+
+```
+
+On teste la normalité de l'age de dékès pour les deux sexes. Au vu des
+p-valeurs, on ne peut pas rejeter l'hypothèse de normalité.
+
+On teste alors l'hypothèse H0 : 'les femmes vivent plus longtemps que
+les hommesa".
+
+La p-valeur valant 1, on ne peut pas rejeter H0.
+
+**Exercice 2 : Tests exacts de Fisher.**
+
+Le data frame suivant est composé des données d'un test clinique pour un
+traitement atténuant les ronflements. Celui-ci est testé contre un
+placebo.
+
+-   `T`: 1 pour le traitement, 0 pour le placebo;
+-   `X`: moyenne du volume sonore (db) du ronflement sur la semaine
+    précédent le test;
+-   `Y`: volume sonore (db) du ronflement durant la nuit du test.
+
+```{r,eval=FALSE}
+data=read.csv("Snoring_treatment.csv")
+```
+
+**1.** Effectuer un test exact de Fisher sur les 10 premiers patients
+(fonction `combn`).
+
+```{r}
+M=data[1:10, 1:3]
+S_obs = abs(mean(M$Y[which(M$T==0)]-M$X[which(M$T==0)]) - mean(M$Y[which(M$T==1)]-M$X[which(M$T==1)]))
+counter = 0
+for (i in 1:1000){
+  T1 = sample(M$T)
+  S1 = abs(mean(M$Y[which(T1==0)]-M$X[which(T1==0)]) - mean(M$Y[which(T1==1)]-M$X[which(T1==1)]))
+  if (S1 > S_obs){
+    counter = counter + 1
+  }
+}
+print(list(S_obs = S_obs, p_value =  counter / 10))
+```
+
+S_obs = abs(moyenne(y[0] -x[0]) - moyenne(y[1]-x[1]))
+
+Je n'ai pas trouvé comment faire pour générer l'ensemble des
+permutations, j'utilise donc Monte carlo. Algorithme : Si H0 est vraie,
+alors peut importe le vecteur T, on devrait trouver le même résultat que
+S_obs ou inférieur. On trouve une p-valeur de 5.2%, en mélangeant le
+vecteur 1000 fois. Au seuil de 5%, on refuse l'hypothèse H0.
+
+**2.** Mettre en place un test exact de Fisher pour l'ensemble du data
+frame. Afin d'approximer la p-valeur par simulations de Monte Carlo, on
+pourra permuter l'ordre des patients en conservant l'ordre de traitement
+(fonction `sample.int`).
+
+```{r}
+M=data
+S_obs = abs(mean(M$Y[which(M$T==0)]-M$X[which(M$T==0)]) - mean(M$Y[which(M$T==1)]-M$X[which(M$T==1)]))
+counter = 0
+for (i in 1:1000){
+  M=data[sample(200,10),1:3]
+  S1 = abs(mean(M$Y[which(M$T==0)]-M$X[which(M$T==0)]) - mean(M$Y[which(M$T==1)]-M$X[which(M$T==1)]))
+  if (S1 > S_obs){
+    counter = counter + 1
+  }
+}
+print(list(S_obs = S_obs, p_value =  counter / 10))
+```
+
+Parfois,S1 est évaluée comme NaN. Il faut relancer
+
+Avec une p-valeur de 47.8%, on ne peut pas rejeter H0 : le traitement
+semble ne pas fonctionner.
+
+**Exercice 3 : Intervalles de confiance et tests pour les proportions.**
+
+Soit $(X_1,\ldots,X_n)$ un $n$- échantillon de loi de bernoulli
+$\mathcal{B}(p).$ On rappelle que:
+$$\dfrac{\sqrt{n}  (\overline{X}_n-p)}{\sqrt{p(1-p)}}\overset{\mathcal{L}}{\underset{n\rightarrow +\infty}\longrightarrow} \mathcal{N}(0,1).$$
+Le code suivant définis la fonction int.p permettant de calculer
+l'intervalle de confiance au niveau $\alpha$ (alpha) pour un
+$n$-échantillon de loi de Bernoulli.
+
+```{r}
+int.p = function(vector, conf.level, na.rm=T) {
+     if (length(vector)==0) { cat("Erreur ! Le vecteur ",substitute(vector),"est vide.\n")} 
+      else { 
+      n = length(vector)-sum(is.na(vector)) 
+      proba = (1-conf.level)*100 ; proba = (100-proba/2)/100 
+      q_norm = qnorm(proba,0,1) # quantile 
+      moyenne = mean(vector,na.rm=na.rm)  
+      dist_max = q_norm * sqrt(moyenne*(1-moyenne)/n) 
+      intervalle = c(moyenne-dist_max, moyenne+dist_max)
+      return(list(intervalle=intervalle, moyenne=moyenne, dist_max)) }} 
+```
+
+La ligne qui suit permet d'essayer la fonction int.p sur un
+$100$-échantillon de loi de Bernoulli $\mathcal{B}(0.2).$
+
+```{r,eval=FALSE}
+x = rbinom(100,1,0.2) ; int.p(x,conf.level = 0.9)
+```
+
+On charge les deux dataframes suivants:
+
+```{r,eval=FALSE}
+
+load(file="df_trait1.Rdata")
+load(file="df_trait2.Rdata")
+```
+
+**0.** Appliquer la fonction int.p sur les données contenues dans ces
+dataframes.
+
+```{r}
+int.p(df1$Resp, conf.level = 0.95)
+int.p(df2$Resp, conf.level = 0.95)
+```
+
+Le deuxième traitement semble plus prometteur, le taux de succès étant
+plus grand, mais les intervalles de confiance à 5% se chevauchent, on ne
+peut donc pas conclure. Avec quelle confiance peut-on affirmer que le
+deuxième traitement marche mieux ?
+
+```{r}
+int.p(df1$Resp, conf.level = 0.80)
+int.p(df2$Resp, conf.level = 0.80)
+```
+
+Avec 80% de chances, les intervalles ne se chevauchent pas, et on peut
+dire que le 2ème traitement marche mieux.
+
+Ces dataframes sont les réponses positives ou non de patient à un
+traitement. Le laboratoire pharmaceutique disposait du traitement 1 et a
+tenté de l'améliorer (traitement 2). Chacun des traitements 1 et 2 a été
+essayé sur deux groupes de 250 et 200 patients. Les résultats pour les
+traitements 1 et 2 sont rangés dans les dataframe df1 et df2.
+
+On rappelle que:
+$$\dfrac{D_n-(p_1-p_2)}{\sqrt{\dfrac{p_1(1-p_1)}{n_1}+ \dfrac{p_2(1-p_2)}{n_2}}}\overset{\mathcal{L}}{\underset{n\rightarrow +\infty}\longrightarrow} \mathcal{N}(0,1).$$
+
+**1.** En vous inspirant de la fonction int.p, réaliser une fonction
+int.diff.p permettant de calculer l'intervalle de confiance au niveau
+$\alpha$ (alpha) pour la différence de deux $n$-échantillons de loi de
+Bernoulli. L'intervalle de confiance au niveau 95% obtenu pour la
+différence $p_2-p_1$ est-il strictement positif?
+
+```{r}
+int.diff = function(x1, x2, conf.level, na.rm=T){
+      proba = (1-conf.level)*100 ; proba = (100-proba/2)/100 
+      q_norm = qnorm(proba,0,1) # quantile 
+      mean_x1 = mean(x1, na.rm = na.rm)
+      mean_x2 = mean(x2, na.rm = na.rm)
+      dn = mean_x1 - mean_x2
+      dist_max = q_norm * (sqrt(mean_x1*(1-mean_x1)/length(x1)) +sqrt(mean_x2*(1-mean_x2)/length(x2)))
+      intervalle = c(dn-dist_max, dn+dist_max)
+      return(list(intervalle=intervalle, moyenne=dn, dist_max))
+      }
+
+int.diff(df1$Resp, df2$Resp, conf.level = 0.80)
+
+```
+
+On ne peut pas conclure au seuil de 5%, peut être que p1 \> p2.
+
+On peut conclure au seuil de 20% que le T2 marche mieux. c'est cohérent
+avec le résultat annoncé plus haut (même valeur).
+
+**2.** Les investigateurs du projet trouvent que l'intervalle de
+confiance est trop grand. Ils hésitent à rajouter 150 patients pour le
+traitement 1 et 100 patients pour le traitement 2. En supposant que les
+estimations des variances pour chaque groupe sont correctes, quelle
+serait la nouvelle longueur de l'intervalle ?
+
+```{r}
+int.diff = function(x1, x2, conf.level, na.rm=T){
+      proba = (1-conf.level)*100 ; proba = (100-proba/2)/100 
+      q_norm = qnorm(proba,0,1) # quantile 
+      mean_x1 = mean(x1, na.rm = na.rm)
+      mean_x2 = mean(x2, na.rm = na.rm)
+      dn = mean_x1 - mean_x2
+      dist_max = q_norm * (sqrt(mean_x1*(1-mean_x1)/(length(x1)+150)) +sqrt(mean_x2*(1-mean_x2)/(length(x2) + 100)))
+      intervalle = c(dn-dist_max, dn+dist_max)
+      return(list(intervalle=intervalle, moyenne=dn, dist_max))
+      }
+
+int.diff(df1$Resp, df2$Resp, conf.level = 0.90)
+```
+
+L'intervalle serait réduit à 0.0825. Ce n'est toujours pas suffisant au
+seuil de 5% (p1 - p2 vaut potentiellement jusqu'à 0.014).
+
+Cela permettrait de conclure que le deuxième traitement est mieux avec
+89% de chances. Ainsi, on gagne 9% de chances, c'est significatif.

@@ -1,0 +1,283 @@
+---
+title: 'TP final: Statistiques biomédicales BINET'
+output:
+  html_document:
+    code_folding: show
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+  pdf_document:
+    toc: yes
+    toc_depth: '2'
+---
+
+**Important:** Ceci est un document R notebook. En cliquant sur knit vous aurez le choix entre un document html, pdf ou word. Le TP doit être rendu sous la forme d'un fichier NOM_prenom.html. Il est à remettre dans moodle.
+CTRL+Alt+i permet d'ouvrir une cellule de code compilable.
+
+
+**Description:** La première partie *Interruption d'essai clinique* et la seconde partie *Bayes UCB* nécessite de savoir coder en `R` à partir de fonctions basiques, tandis que la seconde partie *Cytomegalovirus et transplantation de cellules souches* demande d'analyser des résultats renvoyés par des fonctions évoluées. 
+
+**Consignes:** Tous les documents sont autorisés, y compris l'accès à internet. Il est en revanche formellement interdit de communiquer avec quiconque par mail, sms ou autres ... Lisez l'intégralité du sujet dès le début, afin de mieux gérer votre temps.
+
+# Interruption d'essai clinique
+Dans cette partie le contexte est spéculatif. Il s'agit d'explorer une méthode d'arrêt précoce d'un essai clinique lorsque le traitement ne semble pas marcher.
+
+On se situe dans le cadre d'un essai clinique visant à tester le taux de succès d'un nouveau traitement face au seuil de réussite d'un traitement déjà connu. Ce traitement standard marche dans 60\% des cas. L'essai clinique pour le nouveau traitement inclus jusqu'à 100 patients. Cependant, l'essai sera arrêté préventivement si on possède assez d'évidence que le nouveau traitement ne fonctionne pas mieux que le traitement standard.
+
+Pour gérer l'arrêt précoce, on se sert d'un modélisation bayésienne du paramètre de réussite du nouveau traitement, noté $p:$ 
+$$p\sim \Pi,$$ où l'a priori $\Pi$ est une loi uniforme sur $[0,1]$, càd: $p\sim\mathcal{U}_{[0,1]}.$  Le résultat d'un patient traité avec le nouveau protocole suit une un loi de Bernoulli. On a: $$X\sim \mathcal{B}(p).$$
+Lorsque 5 patients au moins, on déjà été inclus à l'essai clinique, on se sert de la règle suivante: l'essai clinique est interrompu si l'a posteriori $\Pi_n$ porte plus de 95% de la probabilité sur l'intervalle $[0,0.6]:$ 
+$$\Pi_n([0,0.6])\geq 0.95.$$
+
+**1.**  La fonction `Trial` doit permettre de simuler un tel essai clinique. Il faut la compléter pour y inclure le test bayésien.
+```{r}
+Trial <- function(n, p, level){
+  x=rep(NA,n)
+  x_sum=rep(0,2)
+  Test=0
+  i=0
+  while(Test==0 && i<100){
+    i=i+1
+    x[i]=rbinom(1,1,p)
+    x_sum[1]=x_sum[1]+x[i]
+    x_sum[2]=x_sum[2]+1-x[i]
+    # Test bayésien
+    if(i >= 5){
+      posterior=pbeta(seq(0,1,by=0.01),x_sum[1]+1,x_sum[2]+1)
+      credible_interval=posterior>0.95
+      if(posterior[61]>=0.95){
+        Test=1
+      }
+    }
+  }
+  Status="completed"; if(i<100){Status="early stop"}
+  hatp=x_sum[1]/(x_sum[1]+x_sum[2])
+  return(list(hatp=hatp, Nsample=i, Status=Status, x=x))
+}
+n=100; p=0.6;level=0.95
+Trial(n,p, level)
+```
+
+**2.** Effectuer une fonction permettant d'estimer par simulation de Monte Carlo la proportion d'arrêt précoce à tort lorsque le vrai paramètre $p$ de succés du nouveau traitement vaut 60\%, 65\% et 70\% ($p$ sera un paramètre de cette fonction). Donner explicitement les résultats pour ces trois valeurs.
+
+```{r}
+set.seed(1)
+MonteCarlo.arret.prec <- function(nrep, p, level) {
+  count=0
+  for (i in 1:nrep) {
+    res=Trial(n=100,p=p,level=level)
+    if (res$hatp > p && res$Status == "early stop") {
+      count=count+1
+    }
+  }
+  return(count/nrep)
+}
+
+nrep <- 1000
+p_vals <- c(0.6, 0.65, 0.7)
+level <- 0.95
+for (p in p_vals) {
+  prop <- MonteCarlo.arret.prec(nrep, p, level)
+  cat(sprintf("p = %0.2f : %0.2f\n", p, prop))
+}
+```
+J'obtiens alors comme résultat :
+p = 0.60 : 0.00
+p = 0.65 : 0.00
+p = 0.70 : 0.00
+
+Cela n'est pas ce que l'on devrait constater, soit on a pas eu de chance, soit il y a une erreur dans le code. EN fait on aurait du observer une augmentation du taux d'arret précoce à tord quand on augmente le paramètre $p$. Il faudrait donc prendre en compte p dans le test.
+
+# Bayes UCB
+
+On se situe dans le cadre d'un algorithme de bandit à deux bras (1 et 2) dont les gains respectifs suivent des lois de Bernoulli: $X_1\sim\mathcal{B}(p1)$ et $X_2\sim\mathcal{B}(p_2).$
+
+Compléter le code suivant afin de mettre en place l'algorithme Bayes UCB. Les paramètres $p1$ et $p2$ suivent des a priori uniforme ce qui nous place dans la classe des lois conjuguées Beta pour calculer leur a posteriori: $p_i\sim \mathcal{U}_{[0,1]},$ $i=$ 1 ou 2.
+La valeur du paramètre $c$ est à 0 dans l'algorithme suivant (comme proposé par son auteur).
+
+**Bayes UCB:** Le gain associé à chaque bras $k$ est associé à un a priori $\Pi_k$ (au sens bayésien).
+ Soit $q_{t,k}$ le quantile associé à chaque bras au temps $t$ défini par:
+ $$\Pi_{t,k}(]-\infty;q_{t,k})=1-\dfrac{1}{t\log(n)^c},$$ avec
+ $\Pi_{t,k},$ l'a posteriori  pour le bras $k$ au temps $t.$
+ 
+ On joue d'abord une fois chaque bras puis, au temps $t,$ l'algorithme choisi le bras: $$a_t=\underset{k\in\{1,\ldots,K\}}{\arg\max}q_{t,k}.$$
+
+Le but est de créer une fonction Bayes UCB qui mette en oeuvre cet algorithme. Compléter la cellule de code suivante et faite tourner votre algorithme sur les paramètres proposés:
+```{r}
+#paramètre inconnu de l'algorithme mais pas de vous
+p1=0.6; p2=0.7
+#Taille finale de l'échantillon
+n=5000
+# Enregistrement des données séquentielles
+#Dans la première colonne (bras1), en haut le nombre de 1, en bas le nombre de 0 obtenu au temps t sur le bras 1
+#Dans la seconde colonne colonne (bras2), en haut le nombre de 1, en bas le nombre de 0 obtenu au temps t sur le bras 2
+
+Bayes_UCB=function(p1,p2,n,c=0){
+  #initilisation
+  data_t <- matrix(rep(0, 4), 2, 2)
+  data_t[1, 1] <- rbinom(1, 1, p1)
+  data_t[2, 1] <- 1 - data_t[1, 1]
+  data_t[1, 2] <- rbinom(1, 1, p2)
+  data_t[2, 2] <- 1 - data_t[1, 2]
+  for(t in 3:n) {
+    qt <- qbeta(1-1/t*log(n)^c,data_t[2,]+1,data_t[1,]+1)
+    # Sélection du bras avec le quantile le plus élevé
+    at=which.max(qt)
+    #on rejoue sur la branche qui a le qt max et on le rajoute aux données
+    xt=rbinom(1, 1, ifelse(at == 1, p1, p2))
+    data_t[xt+1,at]=data_t[xt+1,at]+1
+  }
+  return(data_t)
+}
+
+result <- Bayes_UCB(p1 = 0.6, p2 = 0.7, n = 5000)
+result
+```
+
+On obtient alors que l'algorithme reste beaucoup plus souvent sur la branche 2, ce qui concorde avec les probabilités données de 0.6 pour la branche 1  et de 0.7 pour la branche 2.
+
+# Cytomegalovirus et transplantation de cellules souches
+
+La greffe de cellules souches hématopoïétiques (GCSH) est la greffe de cellules souches, provenant de la moelle osseuse, du sang périphérique ou du sang du cordon ombilical. Il s'agit d'un acte médical pratiqué le plus souvent chez des patients atteints de certains cancers du sang ou de la moelle osseuse, comme le myélome multiple ou la leucémie. La GCSH allogénique implique deux personnes : le donneur (sain) et le receveur (patient). Les donneurs de CSH allogéniques doivent avoir un type de tissu (HLA) qui correspond au receveur. Dans la GCSH allogénique myéloablative, une chimiothérapie est administrée immédiatement avant une greffe (le régime de conditionnement) dans le but d'éradiquer la maladie du patient avant la perfusion de CSH et de supprimer les réactions immunitaires. La moelle osseuse peut être ablatée (détruite) avec des niveaux de dose qui causent des lésions minimales aux autres tissus. Pour de nombreux patients présentant un risque élevé de mortalité liée à la greffe avec une GCSH allogénique myéloablative, la greffe de cellules souches hématopoïétiques allogéniques conditionnées à intensité réduite s'est avérée efficace. Bien que la GCSH allogénique avec ablation de moëlle osseuse à intensité réduite puisse éviter de nombreuses toxicités organiques associées à l'ablation (chimiothérapie), le risque de développer une maladie du greffon contre l'hôte et une infection, y compris le cytomégalovirus, reste important.
+
+Le cytomégalovirus (CMV) est un virus courant qui peut infecter presque tout le monde. Une fois infecté, le corps conserve le virus à vie. La plupart des gens ne savent pas qu'ils ont le CMV car il cause rarement des problèmes chez les personnes en bonne santé. Mais si la personne est enceinte ou si elle a un système immunitaire affaibli, le CMV est préoccupant. Pour les personnes dont l'immunité est compromise, comme après une GCSH allogénique, l'infection à CMV peut être mortelle. Le génotype KIR du donneur a été impliqué comme facteur contribuant à la réactivation du CMV après une GCSH allogénique myéloablative.
+
+Cette étude examine si le génotype KIR du donneur influence la réactivation du cytomégalovirus (CMV) après une HSCT allogénique avec ablation à intensité réduite.
+
+Cet ensemble de données contient 64 patients consécutifs qui ont subi une greffe de cellules souches hématopoïétiques allogéniques à intensité réduite. Le principal facteur de risque d'intérêt était le nombre de récepteurs tueurs de type immunoglobuline activateurs (aKIR : 1-4 contre 5-6). Un certain nombre de caractéristiques démographiques, de référence et de transplantation ont également été recueillies. Le résultat principal est la présence et le temps de réactivation du cytomégalovirus.
+
+
+Vous disposez de tous les outils du cours pour analyser le dataset suivant (tests classiques, régression logistique, analyse de survie, ...). Le dictionnaire des variables est nommé `Cytomegalovirus Data Dictionary.pdf`.
+```{r}
+load("cmv.rdata")
+```
+## Analyse d'un modèle Logistique
+
+```{r}
+model_diab<- glm(cmv ~ ., data = cytomegalovirus, family = binomial)
+print(model_diab)
+
+llr <- 2 * (model_diab$null.deviance - model_diab$deviance)
+df <- model_diab$df.null - model_diab$df.residual
+p_value <- 1 - pchisq(llr, df)
+
+if(p_value < 0.05) {
+  cat("Le modèle logistique est significativement meilleur que le modèle nul (p-value =", p_value, ")\n")
+} else {
+  cat("Le modèle logistique n'est pas significativement meilleur que le modèle nul (p-value =", p_value, ")\n")
+}
+summary(model_diab)
+```
+
+On utilise un modèle de regression logistique pour interpreter le role du génotype KIR du donneur sur  l'influence de la réactivation du cytomégalovirus (CMV) après une HSCT allogénique avec ablation à intensité réduite.
+On remarque d'abord qu'avec toutes les variables fournit par le dataset, un test de Wald explique que les varaibles rajoutés sont utiles à la compréhension. Pour l'instant on ne peut pas conclure sur l'influence de la variable aKIRs car il y a beaucoup trop de variable qui va polluer les résultats et donc l'interprétabilité.
+On remarque aussi que les résultats obtenu dans summary(model_diab) rend l'interpretabilité médiocre. Il faut essayer avec moins de variables.
+
+```{r}
+model_aKIRsmm<- glm(cmv ~ age+sex+donor.cmv, data = cytomegalovirus, family = binomial)
+print(model_aKIRsmm)
+
+llr <- 2 * (model_aKIRsmm$null.deviance - model_aKIRsmm$deviance)
+df <- model_aKIRsmm$df.null - model_aKIRsmm$df.residual
+p_value <- 1 - pchisq(llr, df)
+
+if(p_value < 0.05) {
+  cat("Le modèle logistique est significativement meilleur que le modèle nul (p-value =", p_value, ")\n")
+} else {
+  cat("Le modèle logistique n'est pas significativement meilleur que le modèle nul (p-value =", p_value, ")\n")
+}
+```
+
+Cela permettra de verifier si aKIRs rajoute de l'info sur un modéle deja bon.
+
+```{r}
+model_aKIRspp<- glm(cmv ~ age+sex+donor.cmv+aKIRs, data = cytomegalovirus, family = binomial)
+print(model_aKIRspp)
+
+llr <- 2 * (model_aKIRspp$null.deviance - model_aKIRspp$deviance)
+df <- model_aKIRspp$df.null - model_aKIRspp$df.residual
+p_value <- 1 - pchisq(llr, df)
+
+if(p_value < 0.05) {
+  cat("Le modèle logistique est significativement meilleur que le modèle nul (p-value =", p_value, ")\n")
+} else {
+  cat("Le modèle logistique n'est pas significativement meilleur que le modèle nul (p-value =", p_value, ")\n")
+}
+```
+Cette fois on compare le modèle nul avec celui de plusieurs variable dont aKIRs pour pouvoir verifier que la variable rajoute de l'information au model.
+
+```{r}
+llr <- 2 * (model_aKIRsmm$deviance - model_aKIRspp$deviance)
+df <- model_aKIRsmm$df.residual - model_aKIRspp$df.residual
+p_value <- 1 - pchisq(llr, df)
+
+if(p_value < 0.05) {
+  cat("Le modèle logistique est significativement meilleur que le modèle nul (p-value =", p_value, ")\n")
+} else {
+  cat("Le modèle logistique n'est pas significativement meilleur que le modèle nul (p-value =", p_value, ")\n")
+}
+```
+
+En rajoutant aKIRs à d'autres variables dans l'analyse, on obtient que le modèle est significativement meilleur avec aKIRs en plus.
+
+Le modèle de régression logistique (qui est par ailleurs validé par un test de vraissemblance), montre que la variable aKIRs influe sur la cytomegalovirus reactivation posttransplant. De plus le coefficient permet de voir que plus le nombre de recepteur est haut plus cela va infecter négativeent le patient car le coefficient est négatif.
+
+## Test exact de Fisher
+Comme l'échantillion est très petit, il est intéressant de faire un test exact de fisher.
+
+```{r}
+cyt_na=na.omit(cytomegalovirus)
+fisher.test(cyt_na$cmv,cyt_na$aKIRs)
+```
+
+On obtient une
+## Analyse de Survie sur le temps de réactivation de cmv
+```{r,}
+library("survival")
+library("survminer")
+```
+
+
+```{r}
+
+fit <- survfit(Surv(time.to.cmv, cmv) ~aKIRs, data = na.omit(cytomegalovirus))
+print(fit)
+```
+
+C'est assez génant car on ne peut pas rajouter +strata(recipient.cmv) pour ne pas affecter nos résultats sur le fait que le receveur est ou non le cytomegalovirus
+
+```{r}
+ggsurvplot(fit,
+          pval = TRUE, conf.int = FALSE,
+          risk.table = FALSE, # Add risk table
+          risk.table.col = "strata", # Change risk table color by groups
+          linetype = "strata", # Change line type by groups
+          surv.median.line = "hv", # Specify median survival
+          ggtheme = theme_bw(), # Change ggplot2 theme
+          palette = c("#E7B800", "#2E9FDF","#e7000f","#66e60b","#FF007F","#000000"))
+```
+
+
+```{r}
+ggsurvplot(fit,
+          pval = TRUE, conf.int = FALSE,
+          risk.table = FALSE, # Add risk table
+          risk.table.col = "strata", # Change risk table color by groups
+          linetype = "strata", # Change line type by groups
+          surv.median.line = "hv", # Specify median survival
+          ggtheme = theme_bw(), # Change ggplot2 theme
+          palette = c("#E7B800", "#2E9FDF","#e7000f","#66e60b","#FF007F","#000000"),
+          fun = "cumhaz")
+```
+
+
+
+
+
+```{r}
+fit <- survdiff(Surv(time.to.cmv, cmv) ~aKIRs+strata(recipient.cmv), data = cytomegalovirus)
+fit
+```
+
+Le log rank test pour le calcul de  difference de survie donne une p-value de p = 0.3, ce qui indique que les courbes de survie ne diffèrent pas significativement selon le groupe.
+De plus en ayant vu les courbes de hazard cumulé, il ne saute pas aux yeux que quand aKIRs est élevé.

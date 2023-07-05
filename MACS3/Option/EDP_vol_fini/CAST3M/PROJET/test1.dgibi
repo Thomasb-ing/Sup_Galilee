@@ -1,0 +1,43 @@
+*GENERAL OPTIONS AND TYPE OF FINITE ELEMENTS
+OPTI 'DIME' 2 'ELEM' 'QUA8';
+
+
+*Donnes physiques du maillage
+L=1;
+H=50;
+h_min=20;
+d=0.8;
+
+
+*Points extremes du maillage 
+
+P_A = 0. 0. ;
+P_B = 0. h_min ;
+P_C = d  (H / 2.);
+P_G = L (H / 2.) ;
+P_H = L  0.;
+
+*Calcul du centre du creux circulaire 
+PCENTRE = 0.5 * (d - (( 1 / d ) * ( ( H / 2 ) - h_min  ) * ( ( H / 2 ) - h_min )) ) (H / 2);
+
+
+*Nombre de points pour chaque bord
+
+N_HA = 10;
+N_GH = 20;
+N_BC = 30;
+
+*Droites du maillage
+
+HA = DROI N_HA P_H P_A;
+GH = DROI N_GH P_G P_H;
+
+*Bord arrondi du maillage 
+
+BC = CERC N_BC P_B PCENTRE P_C;
+
+* CREATION DU MAILLAGE
+
+SU1 = REGL 'DINI' 0.05 'DFIN' 0.1 (INVE BC) (GH ET HA);
+SU2 = SU1 SYME 'DROI' P_C P_G;
+SU = SU1 ET SU2 ;

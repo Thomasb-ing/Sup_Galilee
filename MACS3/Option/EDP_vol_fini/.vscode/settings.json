@@ -1,0 +1,8 @@
+{
+	"markdown.marp.themes": [
+	    "../../../../MARP/CSS-template/style_pres.css",
+	    "./avenir-white.css",
+	    "https://raw.githubusercontent.com/dracula/marp/master/dracula/dracula.css",
+	    "https://github.com/jasonm23/markdown-css-themes/blob/gh-pages/avenir-white.css"
+	]
+    }

@@ -1,0 +1,429 @@
+---
+title: 'TP: statistiques bayésiennes'
+output:
+  html_document:
+    code_folding: show
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+  pdf_document:
+    toc: yes
+    toc_depth: '2'
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+**Important:** Ceci est un document R notebook. En cliquant sur knit
+vous aurez le choix entre un document html, pdf ou word. Le TP doit être
+rendu sous la forme d'un fichier NOM_prenom_Bayes.html. Il est à
+remettre dans moodle. CTRL+Alt+i permet d'ouvrir une cellule de code
+compilable.
+
+# Tests Bayésiens
+
+## Echantillon de Bernoulli
+
+Cette partie a pour but d'étudier les erreurs de type I de plusieurs
+tests, dans le cas standard d'une comparaison d'efficacité d'un nouvel
+agent avec un médicament de référence. On suppose que l'efficacité du
+médicament de référence est $p_0=0.7$ et les hypothèses antagonistes
+sont $H_0: p\leq p_0$ et $H_1: p> p_0.$
+
+**1.** La fonction suivante renvoit la moyenne, la p-valeur, et la borne
+supérieur de l'intervalle de fluctuation sous l'hypothèse $H_0,$
+ci-dessus.
+
+```{r}
+test.p = function(p0, vector, conf.level) {
+     if (length(vector)==0) { cat("Erreur ! Le vecteur ",substitute(vector),"est vide.\n")} 
+      else { 
+      n = length(vector)-sum(is.na(vector)) 
+      moyenne = mean(vector,na.rm=T)  
+      p_val = 1- pnorm(moyenne, p0, sqrt(p0*(1-p0)/n)) 
+      borne_sup = qnorm(conf.level, p0, sqrt(p0*(1-p0)/n))
+      return(list(moyenne=moyenne, p_val=p_val, borne_sup=borne_sup)) }} 
+
+x = rbinom(100,1,0.7) ; test.p(p0=0.7,vector=x,conf.level = 0.95)
+```
+
+Créér une fonction permettant d'évaluer par simulation numérique le
+pourcentage d'erreur de type 1 commises. Cette fonction prendra en
+paramètre d'entrée: `N`, `n` `p0`, `conf.level` où `N` est le nombre de
+tests simulés, `n` la taille de l'échantillon et `p` la vraie
+probabilité de succès du nouvel agent.
+
+```{r}
+simu = function(N, n, p0, conf.level){
+  count = 0
+  for (i in 1:N){
+    x = rbinom(n,1,p0) ; x = test.p(p0=p0,vector=x,conf.level = conf.level)
+    if (x$p_val < 0.05){
+      count = count + 1
+    }
+  }
+  return(count/N)
+}
+
+simu(10000, 100, 0.7, conf.level = 0.95)
+```
+
+On retombe bien sur le alpha théorique de 5%
+
+**2.** Nous allons maintenant effectuer des tests bayésiens. On choisi
+un a priori conjugué avec les données (loi Beta) et la fonction de perte
+considérée est la fonction "0-1":
+$$l(\theta,T)=\alpha_0\mathbb{1}_{\{T=1,\theta\in\Theta_0\}}+ \alpha_1\mathbb{1}_{\{T=0,\theta\in\Theta_1\}}.$$
+Le tests de Bayes $T$ pour cette fonction de perte et un a priori $\Pi$
+est:
+$$T(X_1^n)=\mathbb{1}_{\left\lbrace B_n\leq \dfrac{\alpha_1\Pi(\Theta_1)}{\alpha_0 \Pi\Theta_0}\right\rbrace}
+,\,\,\mbox{avec} \quad B_n=\dfrac{\Pi_n(\Theta_0)}{\Pi_n(\Theta_1)} \dfrac{\Pi(\Theta_1)}{\Pi(\Theta_0)}.$$
+Créer une fonction permettant d'effectuer un test bayésien. Cette
+fonction prendra en paramètre d'entrée: `p0`, `vector`, `a`, `b` (les
+paramètres de l'apriori), `alpha0`, `alpha1`.
+
+```{r}
+test.bayesien = function(p0, vector, a, b, alpha0, alpha1){
+  n1 = sum(vector)
+  n0 = length(vector) - n1
+  B =  pbeta(p0, n1+a, n0+b) / (1-pbeta(p0, n1+a, n0+b)) * (1-pbeta(p0, a, b)) / pbeta(p0, a, b)
+  if (B <= alpha1 / alpha0 * (1-pbeta(p0, a, b)) / pbeta(p0, a, b)){
+    test = 1
+  }
+  else{
+    test=0
+  }
+  return(test)
+}
+
+test.bayesien(0.7, rbinom(100, 1, 0.7), 1, 1, 1, 1)
+```
+
+**3.** Créer une fonction, `err_I_b`, permettant d'étudier l'erreur de
+type 1 dans le sens fréquentiste (données générées sous une unique loi
+de paramètre `p`) .
+
+```{r}
+err_I_b = function(N, n, p0, a, b, alpha0, alpha1){
+        count = 0
+        for (i in 1:N){
+          x = rbinom(n,1,p0) ; x = test.bayesien(p0=p0,vector=x,a,b,alpha0,alpha1)
+          if (x == 1){
+            count = count + 1
+          }
+        }
+        return(count/N)
+}
+```
+
+**4.** Tester la fonction pour les différentes circonstances
+suivantes:`n=10, 50, 100` et
+$\alpha_0/\alpha_1=\Pi([0,p_0])/\Pi(]p_0,1])$ ou
+$\alpha_0/\alpha_1=19/1.$ On choisira un a prioiri uniforme.
+
+```{r}
+err_I_b(1000, 10, 0.7, 1,1,19,1)
+err_I_b(1000, 50, 0.7, 1,1,19,1)
+err_I_b(1000, 100, 0.7, 1,1,19,1)
+alpha0 = pbeta(0.7, 1,1)
+alpha1 = 1-alpha0
+err_I_b(1000, 10, 0.7, 1,1,alpha0,alpha1)
+err_I_b(1000, 50, 0.7, 1,1,alpha0,alpha1)
+err_I_b(1000, 100, 0.7, 1,1,alpha0,alpha1)
+```
+
+## Echantillon de loi normale
+
+Les médecins souhaitent qu'un traitement amènent le biomarqueur $b_0$ à
+se situer en moyenne dans l'intervalle $I=[45,65].$ Chacune des 5 doses
+testées ont été soumises à 25 patients ; les patients ne sont traités
+qu'à une dose (125 volontaires). Pour chacune des doses, on souhaite
+calculer la probabilité que le biomarqueur soit dans l'intervalle. Le
+modèle bayésien suivant est utilisé:
+$$X\mid \theta, \sigma^2\sim\mathcal{N}(\theta, \sigma^2),$$ avec une
+loi conjuguée pour les paramètres $\theta$ et $\sigma$ ([conjugate
+prior](https://en.wikipedia.org/wiki/Conjugate_prior)).
+
+```{r}
+data=read.csv("biomarker_dose.csv")
+```
+
+**1.** Dans un premier temps, on suppose la variance connue est
+identique dans chaque groupe: $\sigma^2=6$. Quelle est la dose la plus
+adaptée
+
+```{r}
+proba_dose = function(x, sdx){
+    mu0=55
+    print(sd(x))
+    sd0=10
+    n = length(x)
+    sigma_post = 1/(sd0*sd0) + n/sdx
+    sigma_post = 1 / sigma_post
+    mean_post = sigma_post * (mu0/(sd0*sd0)+sum(x)/sdx)
+    proba=pnorm(65, mean_post, sqrt(sigma_post)) - pnorm(45, mean_post, sqrt(sigma_post))
+    #proba=pnorm(65, mean_post, sigma_post)
+    return(proba)
+  }
+
+for (i in 1:5){
+  Xi = data$X[which(data$Dose == i)]
+  print(proba_dose(Xi, 6))
+}
+```
+
+**2.** Maintenant, la variance n'est plus connue. Les probabilités sont
+à évaluer par méthode de Monte Carlo en utilisant comme a priori la loi
+normale inverse-gamma:
+$\theta, \sigma^2 \sim \mathcal{N}\Gamma^{-1}(\mu,\lambda, \alpha, \beta).$
+Pour générer sous l'a posteriori, on a:
+$$x \mid y, \mu, \lambda\sim \mathcal{N}(\mu, y/\lambda)\quad \text{et }\quad y\mid \alpha, \beta\sim \Gamma^{-1}(\alpha, \beta) \,\, \Rightarrow \,\, (x,y) \sim \mathcal{N}\Gamma^{-1}(\mu,\lambda, \alpha, \beta)$$
+
+```{r}
+library(invgamma)
+
+# on suppose qu'on dispose de la fonction rinvgamma
+
+proba_mu_nig = function(x, N, mu0, nu, alpha, bet){
+  n = length(x)
+  # calcul des paramètres de l'à posteriori
+  mu0_p = (nu*mu0 + sum(x))/(nu+n)
+  nu_p = nu + n
+  alpha_p = alpha + n/2
+  beta_p = bet + 0.5 * ((sd(x)**2) + n*nu * ((mean(x)-mu0)**2) / (nu+n))
+  sum = 0
+  for (i in 1:N){
+    sigma2 = rinvgamma(1, shape=alpha_p, rate=beta_p)
+    sdx = sqrt(sigma2)
+    mu = rnorm(1, mu0_p, sd = sdx / nu_p)
+    sum = sum + pnorm(65, mu, sdx) - pnorm(45, mu, sdx)
+  }
+  return(sum/N)
+}
+
+n=25
+# arbitraires
+mu0=55
+nu=n
+alpha=n/2
+bet = 500 #arbitraire mais cohérent car 2*bet = sum of squared deviaton => beta ~= n * sigma2 / 2~= 12.5 * 50 ~= 500 
+
+for (i in 1:5){
+  Xi = data$X[which(data$Dose == i)]
+  print(proba_mu_nig(Xi, 1000, mu0, nu, alpha, bet))
+}
+```
+
+Les résultats sont plus réalistes qu'à la question précédente. La
+probabilité maximale est atteinte pour la 3ème dose, à quasi égalité
+avec la 4ème, ce qu'on avait déduit précédemment.
+
+**3.** Cette question nécessite d'avoir installer le logiciel `JAGS` et
+les packages `rjags`, et `r2jags`. Il s'agit d'utiliser ce logiciel pour
+effectuer la même analyse qu'à la question précédente mais sans
+forcément utiliser un a priori conjugué.
+
+```{r}
+#install.packages('R2jags')
+library(R2jags)
+
+#Le modèle pour JAGS
+model1 <- "
+model{
+for (i in 1:N) {
+x[i] ~ dnorm(theta, inv_sigma)
+}
+theta ~ dnorm(55, 1/10)
+inv_sigma ~ dnorm(1/3, 1/10)
+}
+"
+  
+parameters <- c("theta","inv_sigma")
+
+for (i in 1:5){
+  x = data$X[which(data$Dose == i)]
+  N <- 25
+
+  # Les données
+  datum <- list(N=N,x=x)
+  
+  # Les paramètres à étudier
+  
+  # Compile et estime le modèle conditionnellement aux données
+  Mrun1 <- jags(
+    data = datum,
+    parameters.to.save = parameters,
+    model.file = textConnection(model1),
+    n.chains = 2, n.iter = 10000,
+    n.burnin = 2000
+  ) 
+  print(Mrun1)
+}
+```
+
+Je ne sais pas si l'analyse est suffisante, et je ne savais pas comment
+extraire la valeur de theta de l'objet Mrun1.
+
+On peut lire ces résultats de cette manière : le meilleur traitement est
+celui qui amène la moyenne du biomarqueur le plus proche de 55. Ce sont
+donc à nouveau le 3ème, légèrement en dessous, et le 4ème.
+
+Pour vous aider, l'exemple suivant est détaillé dans la section qui
+suit: $\theta\sim \mathcal{N}(0,1)$ et $X_i \sim \mathcal{N}(\theta,1).$
+
+### JAGS, un premier exemple
+
+Le code ci-dessous permet de construire un model bayésien pour JAGS.
+L'exemple est très simple pour que vous puissiez vous concentrer sur la
+structure à donner aux codes: un modèle, des données, des paramètres et
+la fonction `jags` pour obtenir l'a posteriori.
+
+```{r}
+#install.packages('R2jags')
+library(R2jags)
+N <- 50
+x <-  rnorm(N,2,1) # data
+
+#Le modèle pour JAGS
+model1 <- "
+model{
+for (i in 1:N) {
+x[i] ~ dnorm(theta,inv_sigma)
+}
+theta ~ dexp(1)
+inv_sigma = 1/10
+}
+"
+
+# Les données
+datum <- list(N=N,x=x)
+
+# Les paramètres à étudier
+parameters <- c("theta","inv_sigma")
+
+# Compile et estime le modèle conditionnellement aux données
+Mrun1 <- jags(
+  data = datum,
+  parameters.to.save = parameters,
+  model.file = textConnection(model1),
+  n.chains = 2, n.iter = 10000,
+  n.burnin = 2000
+)
+
+```
+
+Un résumé des résultats obtenus:\~
+
+```{r,eval=FALSE}
+Mrun1; mean(x)
+```
+
+Un histogramme des simulations sous "l'a posteriori" pour le paramètre
+$\theta$ et la valeur moyenne du paramètre. On notera l'utilisation de
+BUGSoutput, une sous-liste très utile de notre modèle (taper
+manuellement `Mrun1$BUGSoutput$` dans la console pour obtenir des
+propositions).
+
+```{r,eval=FALSE}
+hist(Mrun1$BUGSoutput$sims.matrix[,"theta"], xlim=c(-5,5))
+Mrun1$BUGSoutput$mean$theta
+```
+
+Et un visuel d'une des chaînes de Markov. On suppose que la chaîne a
+convergée si la distribution semble non corrélée et si `Rhat` est proche
+de 1 (inférieur à 1.05).
+
+```{r}
+traceplot(Mrun1)
+```
+
+**Question 1:** Changer le paramètre \theta dans l'a priori et commenter
+le résultat obtenu. on utilisera par exemple:
+$\theta\sim \mathcal{N}(0,1/100)$ (attention: le paramètre dans dnorm
+correspond à l'inverse de l'écart-type).
+
+**Question 2:** Changer le paramètre de variance afin que celui-ci suive
+une loi exponentielle: $\sigma^2 \sim \mathcal{E}(1)$\
+
+**Quelques distributions potentiellement utiles avec JAGS:**\
+`dpois`, `dnorm`, `dt`,`dexp`,`dchisqr`,`dbin`,`ddexp`,`dbeta`
+
+# Estimateur du maximum de vraisemblance
+
+**Exercice 1 (EMV):** Importer le data set `Survie.Rdata` contenant la
+dataframe `df3`. Ce sont des données de survie en nombre de jours pour
+des souris infectés par un virus et ayant subit un traitement antiviral.
+
+```{r}
+load(file='Survie.Rdata')
+```
+
+On modélise ces données par une loi $\Gamma(a,b)$ ($a$ et $b>0$) de
+densité:
+$$f_{(a,b)}(x) = \frac{b^a}{\Gamma(a)}x^{a-1}e^{-bx},\quad x>0.$$ Dans
+ce modèle la fonction de log-vraisemblance est:
+$$\ell(a,b) = \sum_{i=1}^n\log f_{(a,b)}(x_i)= na\log(b) -n\log(\Gamma(a)) +(a-1)\sum_{i=1}^n\log(x_i) -b\sum_{i=1}^nx_i$$
+Dans ce modèle, L'EMV n'a pas de forme explicite. On utilise
+l'algorithme de Newton-Raphson pour l'approcher. Soit
+$(a^{(t)},b^{(t)}),$ les valeurs des paramètres au temps $t.$ On a
+alors:
+$$(a^{(t+1)},b^{(t+1)})^T = (a^{(t)},b^{(t)})^T-[H(a^{(t)},b^{(t)})]^{-1}\nabla\ell(a^{(t)},b^{(t)})$$
+Le gradient est: $$
+\nabla\ell(a,b) = \left(\frac\partial{\partial a} \ell(a,b),\frac\partial{\partial b} \ell(a,b)\right)^T
+=\left(n\log b- n (\log\Gamma(a))'+\sum_{i=1}^n\log x_i,\quad \frac{na}b-\sum_{i=1}^n x_i\right)^T
+$$ et le laplacien est: $$[H(a,b)]^{-1}
+=\left(\begin{array}{cc}
+\frac{\partial^2}{\partial^2 a} \ell(a,b)&\frac{\partial^2}{\partial a\partial b} \ell(a,b)\\
+\frac{\partial^2}{\partial a\partial b} \ell(a,b)&\frac{\partial^2}{\partial^2 b} \ell(a,b)
+\end{array}\right)^{-1}
+=
+ \frac1{n\left(1-a(\log\Gamma(a))''\right)}
+\left(\begin{array}{cc}
+a&b\\
+b&b^2(\log\Gamma(a))''
+\end{array}\right)$$
+
+**1.** Ecrire une fonction qui met à jour les paramètres. Pour les
+dérivées de $\log\Gamma(a),$ on utilise les fonctions `digamma` et
+`trigamma`.
+
+OK, implémentation en R de l'algo.
+
+**2.** A l'aide d'une boucle while calculer un estimateur de l'EMV.
+Critère d'arrêt:
+$$\left|\frac{\ell(a^{(t+1)},b^{(t+1)})-\ell(a^{(t)},b^{(t)})}{\ell(a^{(t+1)},b^{(t+1)})}\right|<\varepsilon,$$
+avec $\varepsilon=1e-2.$ Initialiser les paramètres à l'aide des
+estimateurs de la méthode des moments (ou par une méthode simple de
+votre choix).
+
+OK, méthode de Newton + méthode des moments obtenus à partir de l'étude
+de l'échantillon.
+
+**3.** Estimer les paramètres à l'aide d'un modèle bayésien et du
+logiciel JAGS.
+
+On fait comme précédemment : voici le modèle
+
+```{r}
+#Le modèle pour JAGS
+model1 <- "
+model{
+for (i in 1:N) {
+x[i] ~ dgamma(a, b)
+}
+a ~ dnorm(a_EMV, 1/10)
+b ~ dnorm(b_EMV, 1/10)
+}
+"
+```
+
+Avec x[i] le temps de survie de la ieme souris
+
+Et cela nous renvoie les estimations de a et b
+
+**4.** D'après vos résultats à la question précédente quelle est la
+probabilité que la survie moyenne soit inférieur à 20 jours ?
+
+Le résultat cherché est donné par la fonction de distribution en x=20 de
+la loi gamma (a, b) avec a et b les paramètres obtenus à l'instant via
+jags.

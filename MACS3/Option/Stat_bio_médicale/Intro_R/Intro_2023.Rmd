@@ -1,0 +1,486 @@
+---
+title: 'TP 0: Introduction à `R`'
+author: "Vos noms"
+date: "Statistiques biomédicales"
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: '2'
+  html_document:
+    toc: yes
+    toc_depth: 2
+subtitle: ''
+header-includes: \usepackage[french]{babel}
+---
+
+
+# 1. Introduction
+
+`R` est est un langage de programmation et un logiciel libre destiné aux statistiques et à la science des données soutenu par la R Foundation for Statistical Computing. Il fait partie de la liste des paquets GNU3 et est écrit en `C` (langage), Fortran et `R`. `R` est un logiciel open source (gratuit et modifiable)  ([cran.r-project.org](http://cran.r-project.org)). Il est très largement utilisé à partir de l'interface graphique `RStudio` ([www.rstudio.com](www.rstudio.com)). 
+
+Il peut-être utilisé sur des fichiers `R script` pour faire du code pur. Les commentaires sont alors à introduire sur une ligne précédée  d'un `#` afin que ceux-ci ne soit pas interprétés.
+```{r}
+# ceci n'est pas interprété.
+```
+```{r}
+2+2
+```
+
+Nous l'utiliserons sur des fichiers  `Rmarkdown` (ou `R notebook`), pour le confort. Il est alors possible de produire des fichiers `html` ou `pdf` (dans l'en-tête changer `html` par `pdf`, selon votre goût).   On ouvre une cellule de code avec le raccourci `Ctrl+Alt+i`. On l'exécute en cliquant sur la flèche verte en bout de ligne (ou en la saisissant plus `Ctrl+ Entrée`). Le fichier s'éxecute en cliquant sur `Knit`.
+
+Comme `python`, `R` est un langage  interprété:
+```{r}
+print('Hello world!')
+```
+On peut aussi exécuter un script, c'est à dire des commandes dans un fichier `.R`. Attention, il faut que le fichier soit situé dans le même dossier (ou alors on donne le chemin complet). Si l'on souhaite que des fichiers `.R` situé dans le même dossier s'appelle entre eux sans spécifier le chemin, il faut situer la session dans le dossier commun: `Session` puis `set working directory`.   
+
+```{r}
+source('Fichier1.R')
+```
+
+ `R` dispose d'une communauté  très active. Les très nombreux _packages_ sont développés par les  utilisateurs et développeurs. On peut les installer simplement sur son ordinateur. Par exemple, pour quelques outils avancés de combinatoires, le package `combinat`, on exécute dans la console: `install.packages('combinat')`, puis:
+```{r}
+#Je n'ai pas exécuté la ligne suivante, car, en faîte, combinat est déjà installé. Elle sert à mettre le package en mémoire.
+#library('combinat')
+combn(1:6,3)
+```
+Quelle est cette fonction `combn`? La réponse est dans la sous-fenêtres `help`, après avoir exécuté la ligne suivante.
+```{r}
+?combn
+```
+De même pour `rnorm`
+```{r}
+?rnorm
+```
+Chercher sur le web permet de trouver de nombreuses informations. Entre autre: https://stats.stackexchange.com/.   
+
+
+La fenêtre de `RStudio` se divise en quatre sous-fenêtres: :
+
+1. un éditeur de texte (fichier `.R` ou `.Rmd`)
+2. l'espace de travail ou d'historique de commandes
+3. le navigateur de fichiers, graphiques, packages, documentations
+4. la console `R`.
+
+
+
+Enfin, le très bon livre de Vincent Goulet _Introduction à la programmation en R_, en accès libre sur le site du [CRAN]( https://cran.r-project.org):
+
+[https://cran.r-project.org/doc/contrib/Goulet_introduction_programmation_R.pdf](https://cran.r-project.org/doc/contrib/Goulet_introduction_programmation_R.pdf)
+
+Afin de profiter de ce TP, lisez, exécutez et/ou modifiez (on enregistre mieux en agissant) chacune des lignes qui suivent ... en commençant par celles-ci.
+
+```{r}
+# Dans le fichier principale, un bon réflexe de programmation demande d'inclure cette ligne au début. 
+rm(list=ls())
+# Elle efface la liste de tous les objets présents en mémoire.
+```
+
+\newpage
+
+
+# 2. Bases du langage
+
+## 2.1 Commandes
+
+Deux types de commandes
+
+__Expressions__
+```{r}
+cos(pi)
+
+log(1)
+```
+__Affectations et expressions__
+```{r}
+# x=1+2
+x <- 1+2 
+x
+y = 4
+x == y
+```
+
+A l'aide de `;` on peut taper deux commandes sur la même ligne avant leur exécution:
+```{r}
+e <- exp(1); log(e)
+```
+
+Exemple d'opérateurs:
+```{r}
+3*4; 12/3; 2^3; sqrt(16)
+1==2; 1!=1
+# et
+FALSE & TRUE 
+# ou
+FALSE | TRUE 
+```
+__Question:__ Introduire deux variables `x` et `y` contenant des valeurs. Ecrire l'expression qui renvoit `TRUE` si `x` et `y` ne sont pas égales.  
+
+## 2.2 Modes, longueurs et classes de données
+
+Dans R, tout est un objet. Les principaux modes sont:
+
+- `numeric` : nombres réels 
+- `character`: chaînes de caractères
+- `logical` : valeurs logiques vrai/faux
+- `list`: liste, collection d'objets
+- `function`: fonction
+
+Les objets de mode `numeric`, `character` et `logical` peuvent contenir des données d'un seul type. Au contraire, les objets de mode `list`  peuvent contenir différents types d'objets. 
+
+On peut accéder au mode d'un objet avec la fonction `mode()`:
+
+```{r}
+# La fonction de concatenation c() permet de créer des vecteurs
+# Note: Les parenthèses servent aux fonctions
+age=c(33,28, 33) 
+mode(age)
+noms <- c('Siham', 'Jeanne', 'Ting')
+mode(noms)
+ma.liste <- list(noms=noms, age=age)
+mode(ma.liste)
+mode(is.integer(pi))
+mode(mode)
+print(ma.liste)
+```
+
+La longueur d'un objet est donné par la fonction `length`: 
+```{r}
+length(age)
+length(noms)
+length(ma.liste)
+```
+
+
+
+Un objet spécial est la valeur manquante `NA`. Par défaut, son mode est `logical`, cependant  `NA` n'est ni `TRUE` ni `FALSE`. Pour tester si une valeur est manquante on utilisera la fonction `is.na()`:
+```{r}
+NA==NA
+is.na(NA)
+is.na(mean(c(1,4,NA)))
+```
+
+
+La _classe_ d'un objet spécifie son interaction avec opérations et fonctions. Les data frame sont des listes spéciales dont les éléments ont tous la même longueur. La classe d'un data frame est différente de celle des listes standards et les data frame ont un système d'indiçage qui n'existe pas pour les autres listes:
+
+```{r}
+class(ma.liste)
+mon.data.frame=data.frame(noms,age)
+mode(mon.data.frame)
+class(mon.data.frame)
+```
+
+__Question:__ Essayer les commandes suivantes. Puis changer l'âge de romain dans `mon.data.frame`. 
+```{r}
+# ma.liste[1,2]
+# mon.data.frame[1,2]
+# ma.liste[[1]][2]
+# mon.data.frame[[1]][2]
+# ma.liste$noms
+# ma.liste$noms[2]
+# mon.data.frame$noms[2]
+```
+
+
+
+
+## 2.3 Vecteurs et matrices
+
+### 2.3.1 Vecteurs
+
+En `R`, le vecteur est l'élément de base pour les calculs : un scalaire est un vecteur de longueur un. La fonction la plus utilisée pour créer un vecteur est la concaténation:
+```{r}
+prix <- c(150, 162, 155, 157); prix
+```
+L'indiçage est fait par les crochets et non les parenthèses, qui servent aux fonctions.
+```{r}
+# le premier indice n'est pas 0 comme en python, mais 1
+prix[1] 
+prix[c(1,3)]
+prix[1:3]
+prix[-(1)] 
+```
+
+On peut aussi utiliser un vecteur booléen pour indicer: les éléments extraits sont ceux correspondants aux valeurs `TRUE`.
+```{r}
+prix[prix>156] 
+```
+
+On peut utiliser l'indiçage pour changer un élément:
+```{r}
+prix[1] <- 0; prix
+```
+
+Il est possible de donner des étiquettes aux éléments d'un vecteur et d'extraire des éléments sur la base de celles-ci:
+```{r}
+names(prix)
+names(prix) <- c('model.1', 'model.2', 'model.3', 'model.4')
+prix
+prix['model.3']
+```
+Dans un vecteur, tous les éléments ont le même mode.
+```{r}
+x <- c(1,2,'a', 'b'); x
+mode(x)
+```
+Pour générer le vecteur des $n$ premiers entiers on utilise la syntaxe `1:n` 
+```{r}
+1:10
+2:6
+```
+Pour générer des suites plus générales on utilise la fonction `seq()`:
+```{r}
+seq(from=2, to=20, by=2) 
+# ou plus simplement 
+seq(2,20,2)
+```
+On peut créer un vecteur d'éléments répétés avec `rep()`:
+```{r}
+rep(1,5) 
+rep(NA,4)
+```
+
+
+
+### 2.3.2 Matrices
+
+Une matrice est un vecteur avec un attribut `dim` de longueur deux. Tous les élèments d'une matrice ont donc le même mode. Pour créer une matrice:
+```{r}
+M <- matrix(1:6, nrow=2, ncol=3); M
+```
+Par défaut `matrix()` remplit la nouvelle matrice par colonne. L'indiçage se fait avec les crochets:
+```{r}
+M[2,] # 2e ligne
+M[,3] # 3e colonne
+M[2,3]
+M[3]
+M[,-2] # extrait toutes les colonnes sauf la 2e
+```
+
+Pour fusionner verticalement (horizontalement) deux matrices on utilise `rbind()` (resp. `cbind()`):
+```{r}
+cbind(M,-M)
+rbind(M,2*M)
+```
+
+### 2.3.3 Opérations sur vecteurs et matrices numériques 
+
+Elément par élément:
+```{r}
+v <- c(3,4,1,6)
+v + 2
+v * 2
+v * v
+v/2
+v/v
+v + v^2
+sqrt(M)
+M * M
+# Essayer les commandes suivantes:
+# M + v
+# M + v[1:3]
+```
+
+Transposée, produit matriciel, inverse:
+```{r}
+t(M)
+N <- M[,-3]
+N %*% diag(1,2) 
+solve(N)
+solve(N) %*% N
+```
+
+__La transposée d'un vecteur est une matrice-ligne:__  
+```{r}
+V <- t(v)
+dim(V)
+t(V)
+```
+Faire attention aux exemples suivants:
+```{r}
+v %*% t(v)  
+t(v) %*% v  
+v %*% v     
+```
+
+
+
+## 2.4 Facteurs
+
+Un facteur est un vecteur utilisé pour contenir une variable qualitative (valeurs discrètes). Ses valeurs, ou catégories ou encore modalités, sont appelées les `levels` en `R`. 
+```{r}
+ville <- c('paris', 'lyon', 'lyon', 'paris', 'nantes')
+fact.ville <- as.factor(ville); fact.ville
+class(fact.ville)
+levels(fact.ville)
+```
+Un facteur a le mode `numeric`: en effet ses éléments sont stockés comme les entiers énumérant les différentes modalités:
+```{r}
+mode(fact.ville)
+as.numeric(fact.ville)
+```
+
+
+
+
+
+## 2.5 Listes
+
+Les listes  peuvent stocker des éléments de n'importe quelle mode (y comprises d'autres listes).
+
+Comme un vecteur, une liste est indicée par l'opérateur `[ ]`. Cependant, cela retourne une liste contenant l'élément souhaité: 
+```{r}
+ma.liste[1]
+mode(ma.liste[1])
+```
+Pour obtenir directement l'élément, on utilise donc l'opérateur `[[ ]]` ou l'opérateur `$` suivi par le nom de l'élément (si disponible: un bon réflexe est de nommer les éléments d'une liste):
+```{r}
+ma.liste[[1]]
+ma.liste$age
+```
+Les éléments d'une liste peuvent avoir des longueurs différentes:
+```{r}
+ma.liste$ville <- ville
+ma.liste
+```
+
+
+
+## 2.6 Data frames
+
+Les data frame sont largement utilisés pour contenir des données. Ce sont des listes de classe `data.frame` dont tous les éléments ont la même longueur.  Normalement, dans un data frame les colonnes sont les __variables__ et les lignes les __observations__. Contrairement aux matrices, les éléments d'un data frame peuvent avoir des modes différents. 
+
+```{r}
+id <- c('id.442', 'id.443', 'id.444', 'id.445', 'id.446', 'id.447', 'id.448', 'id.449')
+age <- c(19, 45, 67, 53, 17, 30, 27, 35)
+fumeur <- c(TRUE, FALSE, TRUE, TRUE, FALSE, TRUE, TRUE, TRUE)
+data1 <- data.frame(Id=id, Age=age, Fumeur=fumeur)
+dim(data1); nrow(data1); ncol(data1)
+names(data1)
+```
+
+Pour extraire les éléments:
+
+```{r}
+data1$Id # une colonne de caractères est transformèe en facteur
+data1[,2]
+data1$Age[data1$Fumeur==FALSE]
+```
+
+Les colonnes sont directement accessibles dans l'espace de travail (sans devoir taper le nom du data frame et le `$`) après avoir attaché le data frame:
+```{r}
+attach(data1)
+Age
+```
+
+Pour afficher seulement les six premières lignes:
+```{r}
+head(data1)
+```
+et les six dernières: `tail()`. Enfin, très pratique, pour obtenir un résumé façon statistiques descriptives:
+```{r}
+summary(data1)
+```
+
+
+
+
+
+
+## 2.7 Fonctions définies par l'utilisateur
+
+__Exemple:__
+```{r}
+ma.fonction <- function(x,y=10){ 
+  # la valeur par défaut de y est 10
+  z=x-2*y
+  return(z)
+}
+ma.fonction(2)
+ma.fonction(2,4)
+ma.fonction(y=1, x=4)
+```
+Toute variable définie dans une fonction est _locale_ et n'apparaît pas dans l'espace de travail: essayer d'exécuter
+```{r,eval=FALSE}
+z
+```
+
+
+
+
+## 2.8 Structures de contrôle
+
+__ Traitement conditionnel, If:__
+```{r}
+x <- runif(1) # valeur tirée selon une loi uniforme dans [0,1]
+if(x<1/6){
+  print('gagné')
+}else{
+  print('perdu')
+}
+```
+
+__Traitement itératif, boucle `for`:__
+```{r}
+y=rep(NA,5)
+for(i in 1:5){
+  y[i] <- exp(i)
+}
+y
+```
+ Comme les boucles ne sont pas très efficaces, il faut essayer de les remplacer par des opérations sur vecteur:
+```{r}
+exp(1:5)
+```
+
+__Traitement itératif, boucle `while`:__
+Que fait le code suivant ?
+```{r}
+
+x <- sample(c('pile','face'), 1, prob = c(0.8,0.2))
+if(x == 'face'){
+  print(paste(x, ', gagne', sep=''))
+}else{
+  while(x != 'face'){ 
+    print(paste(x, ", perdu", sep=''))
+    x <- sample(c('pile','face'), 1, prob = c(0.8,0.2))
+  }
+  print(paste(x, ', gagne', sep=''))
+}
+```
+
+
+
+## 2.9 Importation et exportation des données
+
+
+Plusieurs fonctions permettent d'importer des données suivant le type d'enregistrement. Pour du `txt`, on utilise read.table, pour du `csv`, read.csv, pour des fichiers excel, le package `xlsx` ... et si les données proviennent d'un dataframe de `R`, on privilégiera l'extension `Rdata` pour l'enregistrement.
+
+ Pour `read.table`, les trois arguments les plus importants sont:
+
+* `file`: nom (et adresse) du fichier, entre guillemets. 
+* `header`: les éléments de la première ligne sont ou ne sont pas les noms des colonnes (`TRUE` ou `FALSE`).
+* `sep`: caractére séparant les éléments d'une ligne. 
+
+`read.table()` renvoie un data frame.
+
+```{r}
+#write.table(df1, file='Iris.txt' , sep= ';')
+df1<-read.table('Iris.txt', header= TRUE, sep=';')
+
+
+#save(df2, file = "heart.Rdata")
+load(file='heart.Rdata')
+dim(df2); names(df2)
+```
+__Question:__ Utilisez la fonction `summary` sur `df1` et `df2`, puis décrivez brièvement les données.
+
+Si les données sont stockées (ou doivent être sauvegardées) localement, il est nécessaire de connaître (et pouvoir modifier) le répertoire de travail:
+
+```{r,eval=FALSE}
+getwd() # Ou suis-je ?
+setwd('~/Documents') # Dans quel état gère-t-on nos fichiers !?
+```
+
+On rappelle que dans les machines Linux et OS, `~/` est un raccourcie pour `/Users/nom_utilisateur`. Pour les machines Windows, la syntaxe des adresses est légèrement différente. Par exemple, on utilise `\` à  la place de `/` .
+

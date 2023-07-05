@@ -1,0 +1,19 @@
+---
+title: "Tp1 : Test"
+author: "Thomas BINET"
+date: "20/04/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Question 1
+```{r}
+load("C:/Users/thobi/Documents/Sup_Galilee/CANADA/COURS/STT6515/Final/croissance.rda")
+Z=data.frame(y1=croissance$V1-2*croissance$V2+croissance$V3,y2=croissance$V2-2*croissance$V3+croissance$V4)
+```
+### Test de permutation sur la varibale Z

@@ -1,0 +1,290 @@
+---
+title: 'TP3: survie et estimation non-paramétrique, BINET Thomas'
+output:
+  html_document:
+    code_folding: show
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+  pdf_document:
+    toc: yes
+    toc_depth: '2'
+---
+
+**Important:** Ceci est un document R notebook. En cliquant sur knit vous aurez le choix entre un document html, pdf ou word. Le TP doit être rendu sous la forme d'un fichier NOM_prenom_RegLog.html. Il est à remettre dans moodle. CTRL+Alt+i permet d'ouvrir une cellule de code compilable.
+
+# Fonctions utiles
+
+Le package `asaur` contient une dizaine de datasets de survie. Nous allons notamment travailler sur les datasets `gastricXelox` et `pharmacoSmoking` dont vous pouvez avoir un aperçu grâce à la fonction `glimpse` (package `tidyverse`)
+
+```{r}
+rm(list=ls())
+library(survival)
+library(asaur)
+library(ggfortify)
+head(gastricXelox)
+head(pharmacoSmoking)
+
+```
+
+1.  Créer une fonction permettant de calculer l'estimateur de Kaplan-Meier pour la fonction de survie. Elle devra pouvoir fonctionner avec les datasets `pharmacoSmoking` et `gastricXelox`. On pourra utiliser les fonctions (order et unique). Effectuer une représantation graphique de vos résultats.
+
+$$\hat{S}(t)=\underset{i:ti<t}{\prod}(1-\dfrac{d_i}{Y_i}), $$
+
+$d_i$ le nombre de décé au temps $t_i$ et $Y_i$ le nombre de personne à risque juste avant le temps $t_i.$
+
+```{r}
+estim.Kaplan.Meier<-function(temps,delta){
+  PROD=1
+  li=list()
+  n=length(temps)
+  Temps=sort(unique(temps))
+  for (t in Temps) {
+    nb_mort=sum(temps <= t) #nbr de personne qui on relapse avant t
+    nb_mort_avant=sum(temps < t)
+    c_i=sum(temps==t & delta==0)
+    di=sum(delta[temps==t])
+    #di=sum(temps==t)- c_i #gens mort au temps t
+    Y_i=sum(temps>=t)
+    
+    PROD=PROD*(1-di/Y_i)
+    li=append(li,PROD)
+  }
+  return(li)
+}
+```
+
+
+```{r}
+#Pour pharmacoSmoking
+S=estim.Kaplan.Meier(pharmacoSmoking$ttr,pharmacoSmoking$relapse)
+T=sort(unique(pharmacoSmoking$ttr))
+plot(T,S)
+
+# gastriXelox
+
+S=estim.Kaplan.Meier(gastricXelox$timeWeeks,gastricXelox$delta)
+T=sort(unique(gastricXelox$timeWeeks))
+plot(T,S,'l')
+
+```
+
+3.  Créer une fonction permettant de calculer l'estimateur de Greenwood de la variance. Effectuer une représantation graphique de vos résultats.
+
+    ```{r}
+    estim.Greenwood<-function(temps,delta){
+      PROD=1
+      S=list()
+      VarS=list()
+      n=length(temps)
+      Temps=sort(unique(temps))
+      sum=0
+      for (t in Temps) {
+        nb_mort=sum(temps <= t) #nbr de personne qui on relapse avant t
+        nb_mort_avant=sum(temps < t)
+        c_i=sum(temps==t & delta==0)
+        #di=nb_mort- nb_mort_avant
+        di=sum(temps==t)- c_i #gens mort au temps t
+        Y_i=n- nb_mort_avant
+        PROD=PROD*(1-di/Y_i)
+        sum=sum+di/(Y_i*(Y_i-di))
+        S=append(S,PROD)
+        VarS=append(VarS,sum*PROD^2)
+      }
+      return(list(S=S,VarS=VarS))
+    }
+
+    ```
+
+    ```{r}
+    #pharmacoSmoking
+    tab=estim.Greenwood(pharmacoSmoking$ttr,pharmacoSmoking$relapse)
+    S=tab$S
+    VarS=tab$VarS
+    T=sort(unique(pharmacoSmoking$ttr))
+    plot(T,VarS)
+
+    tab2=estim.Greenwood(gastricXelox$timeWeeks,gastricXelox$delta)
+    S=tab2$S
+    VarS=tab2$VarS
+    T=sort(unique(gastricXelox$timeWeeks))
+    plot(T,VarS)
+    ```
+
+4.  Créer une fonction permettant de calculer les estimateurs de Nelson-Aalen et de Breslow du risque cumulé. Effectuer une représantation graphique de vos résultats.
+
+    ```{r}
+    estim.Nelson.Breslow <-function(temps,delta){
+      SumNelson=0
+      SumBreslow=0
+      Breslow=list()
+      Nelson=list()
+      n=length(temps)
+      Temps=sort(unique(temps))
+      for (t in Temps) {
+        #nb_mort=sum(temps <= t) #nbr de personne qui on relapse avant t
+        #nb_mort_avant=sum(temps < t)
+        #c_i=sum(temps==t & delta==0)
+        #di=nb_mort- nb_mort_avant
+        #di=sum(temps==t)- c_i #gens mort au temps t
+        #Y_i=n- nb_mort_avant
+        di=sum(delta[temps==t])
+        #di=sum(temps==t)- c_i #gens mort au temps t
+        Y_i=sum(temps>=t)
+        SumBreslow=SumBreslow+log(1-di/Y_i)
+        SumNelson=SumNelson+di/Y_i
+        
+        Breslow=append(Breslow,-SumBreslow)
+        Nelson=append(Nelson,SumNelson)
+      }
+      return(list(Breslow=Breslow,Nelson=Nelson))
+    }
+    ```
+
+    ```{r}
+    #pharmacoSmoking
+    tab=estim.Nelson.Breslow(pharmacoSmoking$ttr,pharmacoSmoking$relapse)
+    T=sort(unique(pharmacoSmoking$ttr))
+    plot(T,tab$Nelson)+
+      plot(T,tab$Breslow)
+      
+    #gastriXelox
+    tab=estim.Nelson.Breslow(gastricXelox$timeWeeks,gastricXelox$delta)
+    T=sort(unique(gastricXelox$timeWeeks))
+    plot(T,tab$Breslow)+
+      plot(T,tab$Nelson)
+    ```
+
+5.  Créer une fonction renvoyant l'estimateur de la fonction de survie par la méthode actuarielle. Les pas de temps seront identiques et la fonction prendra en paramètre le nombre de coupures $K.$ On comparera les résultats obtenus avec les résultats de l'estimateur de Kaplan-Meier pour différentes valeurs de $K.$
+
+```{r}
+Estim.Methode.Acturielle = function(temps, delta, K)
+{
+  a = min(temps)
+  b = max(temps)
+  pas = (b -a)/K
+  tau = seq(a, b, pas)
+  
+  ESTIM = 1
+  c = list()
+  for( i in 1:K+1)
+  {
+    di = sum(delta[temps == tau[i]])
+    cat(di)
+    Yi = sum(temps >= tau[i])
+    ci = sum(delta[temps == tau[i]] == 0)
+    ESTIM = ESTIM * (1 - di/(Yi - (ci/2)))
+    c = append(c , ESTIM)
+  }
+  return(list(tau,c))
+}
+```
+
+```{r}
+K = 5
+res = Estim.Methode.Acturielle(gastricXelox$timeWeeks,gastricXelox$delta, K)
+# plot(res[1], res[2], 'l')
+```
+
+
+6.  Comparrer les résultats obtenus à la question 1 et 2 avec ceux de la fonction `survfit` (package `survival`).
+
+```{r,eval=FALSE}
+km = survfit(Surv(timeWeeks, delta) ~ 1, data = gastricXelox)
+autoplot( km )
+km2 = survfit(Surv(ttr, relapse) ~ 1, data = pharmacoSmoking)
+autoplot( km2 )
+```
+
+On obtient bien la meme chose . (a la limite on peut rajouter la variance pour voir si la plage est la meme)
+
+# Analyse du jeu de données `pharmacosmoking`
+
+Etudier l'impact des covariables `levelSmoking`, `grp`, `ageGroup2`, `ageGroup4` et `employment`. L'objet de cette question est l'interprétation et la présentation scientifique des résulats que vous avez obtenus, soit par vos fonctions soit par la fonction `survfit` ( voir fonction `summary` et `attributes` appliquées à l'objet de classe `survfit`). On pensera notamment à utiliser des tests et des intervalles de confiance appliqués à quelques instants choisis de l'espace de temps.
+
+```{r}
+#install.packages(c("survival", "survminer"))
+library("survival")
+library("survminer")
+```
+
+```{r}
+#pharmacosmoking
+
+fit <- survfit(Surv(ttr, relapse) ~ levelSmoking, data = pharmacoSmoking)
+print(fit)
+# Change color, linetype by strata, risk.table color by strata
+ggsurvplot(fit,
+          pval = TRUE, conf.int = TRUE,
+          risk.table = TRUE, # Add risk table
+          risk.table.col = "strata", # Change risk table color by groups
+          linetype = "strata", # Change line type by groups
+          surv.median.line = "hv", # Specify median survival
+          ggtheme = theme_bw(), # Change ggplot2 theme
+          palette = c("#E7B800", "#2E9FDF"))
+```
+Au fina, sauf au début de l'étude où les gros fumeurs auront plus de chance de reprendre, passé le premier mois, la probabilité de rechuter ne dépend apparament pas de l'intensité à fumé.
+
+```{r}
+fit <- survfit(Surv(ttr, relapse) ~ grp, data = pharmacoSmoking)
+print(fit)
+# Change color, linetype by strata, risk.table color by strata
+ggsurvplot(fit,
+          pval = TRUE, conf.int = TRUE,
+          risk.table = TRUE, # Add risk table
+          risk.table.col = "strata", # Change risk table color by groups
+          linetype = "strata", # Change line type by groups
+          surv.median.line = "hv", # Specify median survival
+          ggtheme = theme_bw(), # Change ggplot2 theme
+          palette = c("#E7B800", "#2E9FDF"))
+```
+
+Pour cette classe la on remarque une grosse différence de survie entre le groupe qui a pris seulement les patchs et celui qui a prit une combinaison de patchs et d'autre choses. On pourra donc estimer que la prise d'un complément avec le patch est significatif dans la probabilité d'arret du tabac.
+
+```{r}
+fit <- survfit(Surv(ttr, relapse) ~ employment, data = pharmacoSmoking)
+print(fit)
+# Change color, linetype by strata, risk.table color by strata
+ggsurvplot(fit,
+          pval = TRUE, conf.int = TRUE,
+          risk.table = TRUE, # Add risk table
+          risk.table.col = "strata", # Change risk table color by groups
+          linetype = "strata", # Change line type by groups
+          surv.median.line = "hv", # Specify median survival
+          ggtheme = theme_bw(), # Change ggplot2 theme
+          palette = c("#E7B800", "#2E9FDF","#e7000f"))
+```
+Ici, les travailleurs en temps partiels ont l'air d'avoir plus de mal a tenir contrairement au temps pleins (surement une question de passer le temps).
+
+```{r}
+fit <- survfit(Surv(ttr, relapse) ~ ageGroup2, data = pharmacoSmoking)
+print(fit)
+# Change color, linetype by strata, risk.table color by strata
+ggsurvplot(fit,
+          pval = TRUE, conf.int = TRUE,
+          risk.table = TRUE, # Add risk table
+          risk.table.col = "strata", # Change risk table color by groups
+          linetype = "strata", # Change line type by groups
+          surv.median.line = "hv", # Specify median survival
+          ggtheme = theme_bw(), # Change ggplot2 theme
+          palette = c("#E7B800", "#2E9FDF"))
+```
+On remarque très aisement que les deux courbes (intervalles de confiances incluent) sont séparés, donc le fait davoir plus ou moin de 50 ans influent sur le jour de reprise. 
+PS: les personnes de plus de 50 ans tiennent plus longtemps le coup que les autres. Cela n'est pas du au travail selon l'etude précédente,
+
+
+```{r}
+fit <- survfit(Surv(ttr, relapse) ~ ageGroup4, data = pharmacoSmoking)
+print(fit)
+# Change color, linetype by strata, risk.table color by strata
+ggsurvplot(fit,
+          pval = TRUE, conf.int = TRUE,
+          risk.table = TRUE, # Add risk table
+          risk.table.col = "strata", # Change risk table color by groups
+          linetype = "strata", # Change line type by groups
+          surv.median.line = "hv", # Specify median survival
+          ggtheme = theme_bw(), # Change ggplot2 theme
+          palette = c("#E7B800", "#2E9FDF","#e7000f","#66e60b"))
+```
+Le shema est un peu lourd mais on arrive à distinguer que la courbe de survie de la classe d'age 50-64 se distingue des autres courbes de survie. On peut donc penser que etre ou non dans cette tranche d'age influe sur le jour de reprise.
+

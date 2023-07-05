@@ -1,0 +1,264 @@
+---
+title: 'TP4: Analyse de survie 2 , BINET Thomas'
+output:
+  html_document:
+    code_folding: show
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+  pdf_document:
+    toc: yes
+    toc_depth: '2'
+---
+
+**Important:** Ceci est un document R notebook. En cliquant sur knit vous aurez le choix entre un document html, pdf ou word. Le TP doit être rendu sous la forme d'un fichier NOM_prenom_RegLog.html. Il est à remettre dans moodle. CTRL+Alt+i permet d'ouvrir une cellule de code compilable.
+
+# Tests non-paramétriques.
+
+On travaille sur le dataset `pharmacoSmoking` du package `asaur` dont vous pouvez avoir un aperçu grâce à la fonction `glimpse` (package `tidyverse`, si vous n'avez pas ce package déjà installé préférer les fonctions head et summary).
+
+```{r}
+library(survival)
+library(asaur)
+#library(tidyverse)
+library(ggfortify)
+#glimpse(pharmacoSmoking)
+```
+
+*1.* Créer une fonction permettant de faire un test du log-rank bilatéral pour la covariable binaire `grp` du dataset `pharmacoSmoking`.
+
+```{r}
+test.log.rank<-function(time,event,delta,group,seuil){
+  tmin=min(time)
+  tmax=max(time)
+  g1=unique(group)[1]
+  g2=unique(group)[2]
+  event
+  temps=tmin:tmax
+  sum_Vk=0
+  sumd1k=0
+  for (t in temps){
+    c_k=sum(event==t & delta==0)
+    
+    dk=sum(delta[event==t])
+    Yk=sum(event>=t)
+    d1k=sum(delta[event==t & group==g1])
+    Y1k=sum((event[group == g1])>=t)
+    d2k=dk-d1k
+    Y2k=Yk-Y1k
+    Ek=Y1k*dk/Yk
+    Vk=((Yk-dk)/(Yk-1))*(dk*Y1k*Y2k/(Yk^2))
+    sum_Vk=sum_Vk+Vk
+    sumd1k=sumd1k+(d1k-Ek)
+  }
+  test=(sumd1k^2)/sum_Vk
+  cat("ma statistique de test vaut :\n")
+  cat(test,"\n")
+  ptest=1-pchisq(test,1)
+  if(ptest>seuil){
+    cat("L'hypothèse H0 : S1(t)=S2(t) est accépté au seuil donné \n")
+  }else{
+    cat("L'hypothèse H0 : S1(t)=S2(t) est rejeté au seuil donné \n")
+  }
+  return(test)
+}
+```
+
+```{r}
+time=pharmacoSmoking$ttr
+event=pharmacoSmoking$ttr
+delta=pharmacoSmoking$relapse
+group=pharmacoSmoking$grp
+seuil=0.05
+test.log.rank(time,event,delta,group,seuil)
+```
+
+```{r}
+survdiff(Surv(ttr, relapse) ~ grp, data = pharmacoSmoking)
+```
+
+```{r}
+autoplot(survfit(Surv(ttr, relapse) ~ grp, data = pharmacoSmoking))
+```
+
+On pourra utiliser la ligne qui suit, donnant les temps ordonnés des événements:
+
+```{r}
+unique(pharmacoSmoking$ttr[order(pharmacoSmoking$ttr)])
+```
+
+2.  Utiliser la fonction `survdiff` pour effectuer un test du $\chi^2$ d'égalité bilatéral au niveau de confiance 0.5% pour la covariable `grp`. Comparer aux résultats obtenus par votre fonction. Pouvez-vous conclure à une différence entre les traitements?
+
+```{r}
+survdiff(Surv(ttr, relapse) ~ grp, data = pharmacoSmoking)
+```
+
+La fonction donne 8.03 pour le Chisq, or la pvalue associé est de 0.004600884 qui est bien inférieur à 0.5%. On peut donc rejetter l'hypothèse H0 associé à l'égalité entre les fonctions probabilités de survie. (exactement comme la fonction d'avant avec la statistique de test 8.027634)
+
+3.  A l'aide de l'option `strata`, stratifier les tests menés sur différentes covariables (par exemple `grp`, `employment` ou `ageGroup2` ... ). Il est possible de stratifier en fonction de différents covariables (`gender`, `levelSmoking` ou `grp`...). Interpréter les résultats.
+
+```{r}
+survdiff(Surv(ttr, relapse) ~ grp + strata(employment,gender,levelSmoking,ageGroup2), data = pharmacoSmoking)
+```
+
+4.  Y a t-il une différence significative en fonction du genre, de l'âge (ageGroup2) ou des races au seuil de 0.5% (attention, il y a deux covariables différentes pour l'âge)?
+
+# Modéle de Cox
+
+## Datasets générés
+
+1.  Dans les programmes ci-dessous, la variable temporelle est `t` et les variables explicatives (aussi appelées covariables ou var. dépendantes) sont `x1` et `x2`. La censure est enregistrée par `delta`: 1 pour un événement observé, 0 pour une censure et le suivi dure 1 an maximum. Les données contenues dans les différents `datum` sont-elles générées selon un modèle de Cox ?
+
+```{r}
+set.seed(2)
+n=500
+x1=rbinom(n,1,0.4)
+x2=rbinom(n,1,0.2)
+censure=floor(rexp(n,1/2000))
+delta=rep(0,n)
+t=rep(0,n)
+p=0.001
+beta=2
+#Les jours sont décomptés un à un  par la boucle while et la variable cpt 
+#chacun étant soumis à un risque instantané.
+for(i in 1:n){
+  test=0
+  cpt=0
+  while(test!=1){
+    cpt=cpt+1
+    test=rbinom(1,1,p*exp(beta*x1[i]/log(cpt+1)))
+    if(test==1){t[i]=cpt;delta[i]=1}
+    if(cpt>censure[i] || cpt==365){t[i]=cpt ; test=1}
+  }
+}
+datum1=data.frame(x1=x1,x2=x2,delta=delta,t=t)
+```
+
+```{r}
+set.seed(2)
+n=500
+x1=rbinom(n,1,0.4)
+x2=rbinom(n,1,0.2)
+censure=floor(rexp(n,1/2000))
+delta=rep(0,n)
+t=rep(0,n)
+p=0.001
+beta=2
+#Les jours sont décomptés un à un  par la boucle while et la variable cpt 
+#chacun étant soumis à un risque instantané.
+for(i in 1:n){
+  test=0
+  cpt=0
+  while(test!=1){
+    cpt=cpt+1
+    test=rbinom(1,1,p*exp(beta*x1[i]+0.0001*cpt))
+    if(test==1){t[i]=cpt;delta[i]=1}
+    if(cpt>censure[i] || cpt==365){t[i]=cpt ; test=1}
+  }
+}
+datum2=data.frame(x1=x1,x2=x2,delta=delta,t=t)
+```
+
+Les deux programmes génèrent des données de survie avec censure, mais ils ne sont pas tous les deux basés sur un modèle de Cox.
+
+En effet, à cause du log(cpt) dans le datum1, les données généré ne vont pas suivre parfaitement un modèle de Cox contrairement au datum2 qui suit mieux le modèle de Cox.
+
+```{r}
+res = cox.zph(coxph(Surv(t,delta) ~ ., data = datum1))
+plot(res)
+print(res)
+
+res2 = cox.zph(coxph(Surv(t,delta) ~ ., data = datum2))
+plot(res2)
+print(res2)
+```
+
+2.  Appliquer les lignes suivantes au deux `datum` et interpréter
+
+```{r}
+model<-coxph(Surv(t,delta) ~. , data = datum1)
+summary(model)
+```
+
+Pour datum1, On peut deja remarquer que la concordance du modele de Cox est de 0.576, on peut donc accepter le modèle mais peut mieux faire ! De plus le modèle de Cox nous montre que la variable x1 est très significative contrairement à la variable x2. Le test du rapport de vraisemblance, le test de Wald et le test de score (log-rank) sont tous significatifs à un niveau de signification de 0,002, indiquant que le modèle global est significativement meilleur qu'un modèle avec uniquement l'intercept. Les valeurs d'exp(coef) pour x1 et x2 sont respectivement 1,751 et 0,859, ce qui signifie qu'une unité d'augmentation de x1 est associée à une augmentation de 75,1 % du risque d'événement, toutes choses étant égales par ailleurs, et qu'une unité d'augmentation de x2 est associée à une diminution de 14,1 % du risque d'événement, toutes choses étant égales par ailleurs. Les intervalles de confiance à 95 % pour les coefficients de régression indiquent que les coefficients sont significativement différents de 0.
+
+```{r}
+rat=1.751+0.859
+1.751/rat
+```
+
+```{r}
+model<-coxph(Surv(t,delta) ~. , data = datum2)
+summary(model)
+```
+
+Pour le datum2, par la même analyse on remarque que le modèle de Cox correspond mieux aux données donc donnera une meilleure interpretation (concordance de 0.738). Le coeff x1 est toujours très significatif tandis que x2 ne l'est pas. L'interval de confiance à95% nous montre que les coefficient de régression sont significativelent différent de 0. Pour x1, une unité d'augmentation est associé à une augmentation de 841% du risque d'événement. Pour x2 c'est 14%. Mais l'augmentation piur x2 n'est pas significative par apport au modèle car la pvalue est de 0.33
+
+3.  Compléter le code pour générer un dataframe `datum3` selon le modèle de Cox avec deux variables explicatives binaires `x1` et `x2` suivant: $$\lambda(t\mid Z) =\lambda_0(t)\exp(0.5X_1\times X_2),$$ avec $$\lambda_0(t)=0.002/\log(t+1),$$ pour $t$ entier dans l'ensemble $\{0,\ldots, 365\}.$ La censure sera générée comme pour `datum` 1 et 2.
+
+```{r}
+set.seed(4)
+n=500
+x1=rbinom(n,1,0.5)
+x2=rbinom(n,1,0.5)
+censure=floor(rexp(n,1/2000))
+delta=rep(0,n)
+t=rep(0,n)
+p=0.002
+beta=0.5
+for(i in 1:n){
+  lambda0=p/log(i+1)
+  lambda=lambda0*exp(beta*x1[i]*x2[i])
+  T=rpois(1,lambda)
+  if(T<=censure[i]){
+    delta[i]=1
+    t[i]=T
+  } else {
+    delta[i]=0
+    t[i]=censure[i]
+  }
+}
+datum3=data.frame(x1=x1,x2=x2,delta=delta,t=t)
+model<-coxph(Surv(t,delta) ~ x1*x2 , data = datum3)
+summary(model)
+```
+
+4.  Appliquer le modèle de Cox à `datum3` avec ou sans interaction.
+
+## Le dataset pharmacoSmoking
+
+1.  'A l'aide de la fonction `coxph`, ajustez un modèle de Cox sur toutes les covariables. Quels problèmes voyez-vous dans cette procédure. Ajustez un modèle de Cox sur un ensemble de covariable ne posant plus ce problème.
+
+    ```{r}
+    model<-coxph(Surv(ttr,relapse)~ .,data=pharmacoSmoking)
+    summary(model)
+    ```
+
+    Les coefficients des variables sont tous très petits et seulement 3 variables sont dites significatives dont aucunes avec un coefficient réelement important pour l'interpretation.
+
+    ```{r}
+    model2<-coxph(Surv(ttr,relapse)~ id+grp+employment+levelSmoking,data=pharmacoSmoking)
+    summary(model2)
+    ```
+
+    On retrouve, en ayant selectionné un sous ensemble de covariable, des coefficients plus impactant dans le modèle de Cox.
+
+2.  Mettez en place une procédure de sélection de variables avec la fonction `stepAIC`. Interpréter les cofficients sur les variables restantes.
+
+    ```{r}
+    library(MASS)
+    step.model <- stepAIC(model,trace = FALSE)
+    coef(step.model)
+    ```
+
+3.  Représenter la fonction de survie pour les covariables correspondants aux 4 premiers patients et pour le modèle optimisé par la fonction `stepAIC` (1 courbe pour chaque patient). On utilisera L'estimateur du risque cumulé de Breslow pour estimer la fonction de survie (slide 27).
+
+4.  Interpréter les lignes de code suivantes:
+
+```{r}
+res = cox.zph(coxph(Surv(ttr,relapse) ~ grp + age + employment, data = pharmacoSmoking))
+plot(res)
+print(res)
+```
+
+Le bloc de code suivant réalisent le test de l'hypothèse de proportionnalité des risques de Cox pour le modèle de régression `coxph` spécifié avec une survie `Surv(ttr,relapse)` en fonction de trois variables explicatives `grp`, `age` et `employment`. La fonction `cox.zph` calcule la statistique de Schoenfeld pour chaque variable explicative, qui permet de tester si l'effet de chaque variable sur le risque de l'événement est constant au cours du temps.

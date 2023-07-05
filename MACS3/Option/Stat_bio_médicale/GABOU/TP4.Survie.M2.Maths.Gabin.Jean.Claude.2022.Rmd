@@ -1,0 +1,328 @@
+---
+title: 'TP3: survie et estimation non-paramétrique'
+output:
+  html_document:
+    code_folding: show
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+  pdf_document:
+    toc: yes
+    toc_depth: '2'
+---
+
+**Important:** Ceci est un document R notebook. En cliquant sur knit vous aurez le choix entre un document html, pdf ou word. Le TP doit être rendu sous la forme d'un fichier NOM_prenom_RegLog.html. Il est à remettre dans moodle. CTRL+Alt+i permet d'ouvrir une cellule de code compilable.
+
+# Fonctions utiles
+
+Le package `asaur` contient une dizaine de datasets de survie. Nous allons notamment travailler sur les datasets `gastricXelox` et `pharmacoSmoking` dont vous pouvez avoir un aperçu grâce à la fonction `glimpse` (package `tidyverse`)
+
+```{r}
+rm(list=ls())
+library(survival)
+library(asaur)
+library(tidyverse)
+library(ggfortify)
+glimpse(pharmacoSmoking)
+summary(gastricXelox)
+head(gastricXelox)
+summary(pharmacoSmoking)
+head(pharmacoSmoking)
+
+```
+
+1.  Créer une fonction permettant de calculer l'estimateur de Kaplan-Meier pour la fonction de survie. Elle devra pouvoir fonctionner avec les datasets `pharmacoSmoking` et `gastricXelox`. On pourra utiliser les fonctions (order et unique). Effectuer une représantation graphique de vos résultats.
+
+ch$$\hat{S}(t)=\underset{i:ti<t}{\prod}(1-\dfrac{d_i}{Y_i}), $$ $d_i$ le nombre de décès au temps $t_i$ et $Y_i$ le nombre de personne à risque juste avant le temps $t_i$
+
+### Fonctions & étude de pharmacoSmoking
+
+```{r}
+
+kaplan.meier = function(t, X, delta){
+  n = length(X)
+  TT = unique(X)
+  TT = TT[order(TT)]
+  TT = TT[which(TT <= t)]
+  S = 1
+  Y = n
+  for (ti in TT){
+    di = length(X[which(X == ti & delta == 1)])
+    S = S * (1 -  di / Y)
+    Y = Y - length(X[which(X == ti)])
+  }
+  return(S)
+}
+
+data = pharmacoSmoking
+delta = data$relapse
+X = data$ttr
+
+func.rep = function(f, X, delta, plot_bool = TRUE, legendd = FALSE){
+  TT = unique(X)
+  TT = TT[order(TT)]
+  S = rep(0, length(TT))
+  for (i in 1:length(TT)){
+    S[i] = f(TT[i], X, delta)
+  }
+  if (plot_bool){
+  plot(TT, S, xlab = 'Temps', ylab = as.character(substitute(f)))
+  if (legendd){
+  legend(100, .9, legendd, lwd=2, bty='n')
+  }
+  }
+  return(S)
+}
+
+S = func.rep(kaplan.meier, X, delta)
+```
+
+2.  Créer une fonction permettant de calculer l'estimateur de Greenwood de la variance. Effectuer une représantation graphique de vos résultats.
+
+    ```{r}
+    greenwood = function(t, X, delta){
+      S = kaplan.meier(t, X, delta)
+      n = length(X)
+      TT = unique(X)
+      TT = TT[order(TT)]
+      TT = TT[which(TT <= t)]
+      Y = n
+      count = 0
+      for (ti in TT){
+        di = length(X[which(X == ti & delta == 1)])
+        count = count + di / (Y * (Y - di))
+        Y = Y - length(X[which(X == ti)])
+      }
+      return(S * S * count)
+    }
+
+    V = func.rep(greenwood, X, delta)
+    ```
+
+3.  Créer une fonction permettant de calculer les estimateurs de Nelson-Aalen et de Breslow du risque cumulé. Effectuer une représantation graphique de vos résultats.
+
+    ```{r}
+    nelson.aalen = function(t, X, delta){
+      n = length(X)
+      TT = unique(X)
+      TT = TT[order(TT)]
+      TT = TT[which(TT <= t)]
+      Y = n
+      count = 0
+      for (ti in TT){
+        di = length(X[which(X == ti & delta == 1)])
+        count =  count + di / Y
+        Y = Y - length(X[which(X == ti)])
+      }
+      return(count)
+    }
+
+    breslow = function(t, X, delta){
+      n = length(X)
+      TT = unique(X)
+      TT = TT[order(TT)]
+      TT = TT[which(TT <= t)]
+      Y = n
+      count = 0
+      for (ti in TT){
+        di = length(X[which(X == ti & delta == 1)])
+        count = count + log(1 - di / Y)
+        Y = Y - length(X[which(X == ti)])
+      }
+      return(- count)
+    }
+
+
+
+    NAA = func.rep(nelson.aalen, X, delta)
+    B = func.rep(breslow, X, delta)
+    ```
+
+4.  Créer une fonction renvoyant l'estimateur de la fonction de survie par la méthode actuarielle. Les pas de temps seront identiques et la fonction prendra en paramètre le nombre de coupures $K.$ On comparera les résultats obtenus avec les résultats de l'estimateur de Kaplan-Meier pour différentes valeurs de $K.$
+
+    ```{r}
+
+    actuarielle = function(t, X, delta){
+      n = length(X)
+      TT = unique(X)
+      TT = TT[order(TT)]
+      TT = TT[which(TT <= t)]
+      S = 1
+      Y = n
+      for (ti in TT){
+        di = length(X[which(X == ti & delta == 1)])
+        dc = length(X[which(X == ti & delta == 0)])
+        S = S * (1 -  di / (Y - dc/2))
+        Y = Y - length(X[which(X == ti)])
+      }
+      return(S)
+    }
+
+    AC = func.rep(actuarielle, X, delta)
+    ```
+
+    ### Application à gastrox
+
+    ```{r}
+    data=gastricXelox
+    delta = data$delta
+    X = data$timeWeeks
+    ```
+
+    ```{r}
+    func = c(kaplan.meier, greenwood, nelson.aalen, breslow, actuarielle)
+    for (f in func){
+      func.rep(f, X, delta)
+    }
+    # élégant mais problème d'affichage du y_label
+    ```
+
+5.  Comparrer les résultats obtenus à la question 1 et 2 avec ceux de la fonction `survfit` (package `survival`).
+
+```{r}
+km = survfit(Surv(timeWeeks, delta) ~ 1, data = gastricXelox)
+autoplot( km )
+km2 = survfit(Surv(ttr, relapse) ~ 1, data = pharmacoSmoking)
+autoplot( km2 )
+```
+
+# Analyse du jeu de données `pharmacosmoking`
+
+Etudier l'impact des covariables `levelSmoking`, `grp`, `ageGroup2`, `ageGroup4` et `employment`. L'objet de cette question est l'interprétation et la présentation scientifique des résulats que vous avez obtenus, soit par vos fonctions soit par la fonction `survfit` ( voir fonction `summary` et `attributes` appliquées à l'objet de classe `survfit`). On pensera notamment à utiliser des tests et des intervalles de confiance appliqués à quelques instants choisis de l'espace de temps.
+
+## Concentration de tous nos graphes
+
+```{r}
+data = pharmacoSmoking
+delta = data$relapse
+X = data$ttr
+
+func = c(kaplan.meier, greenwood, nelson.aalen, breslow, actuarielle)
+for (f in func){
+  func.rep(f, X, delta)
+}
+# élégant mais problème d'affichage du y_label
+```
+
+## Analyse de survfit
+
+```{r}
+summary(km2)
+```
+
+#### Explication des colonnes du tableau obtenu par summary:
+
+time contient les instants où un évènement s'est produit, mais ne tient pas compte des instants où seule une censure s'est produite (exemple : pour gastrox, il y a une censure à t=57 or t=57 n'apparait pas dans le summary(km))
+
+n.risk : ce qu'on appelle Yi
+
+n.event : ce qu'on appelle di
+
+survival : estimation par km de la fonction de survie
+
+std : estimation par greenwood de l'écart type
+
+95% CI bounds : obtenues par le théorème de normalité asymptotique de KM ?
+
+#### Interprétation du tableau
+
+En utilisant les bornes à 95%, 1 personne sur 2 recommençera à fumer dans les 65 jours qui suivent l'arrêt.
+
+La probabilité de réussir à arrêter de fumer est de 0.288 +- 0.1 ie 25% des gens réussissent à arrêter de fumer.
+
+# Calcul de la fonction de survie pour chaque groupe
+
+Plus fin, on sépare le jeu de données en k jeux de données selon la valeur d'une covariable possédant k classes. On calcule la fonction de survie pour chaque groupe, et on regarde si elle change.
+
+\~ on étudie dans un premier temps l'influence de grp
+
+```{r}
+
+data = pharmacoSmoking
+delta = data$relapse
+X = data$ttr
+
+covariable.influence = function(covariable, X, delta){
+  labels = unique(covariable)
+  for (i in 1:length(labels)){
+    Xi = X[which(covariable == labels[i])]
+    deltai = delta[which(covariable == labels[i])]
+    func.rep(kaplan.meier, Xi, deltai, legendd = labels[i])
+  }
+}
+```
+
+## grp
+
+```{r}
+covariable = data$grp
+covariable.influence(covariable, X, delta)
+```
+
+50% des patients patchOnly perdront après 25 jours, tandis qu'il faut 50 jours aux patients suivant le traitement combiné.
+
+## levelSmoking
+
+```{r}
+covariable = data$levelSmoking
+covariable.influence(covariable, X, delta)
+```
+
+Comme attendu, la fonction de survie des 'light' fumeurs est plus élevée que celle des heavy, ie les premiers ont plus de facilité à arrêter ou tiennent plus longtemps sans fumer.
+
+## ageGroup2
+
+```{r}
+covariable = data$ageGroup2
+covariable.influence(covariable, X, delta)
+```
+
+Les 21-49 ont peu de résistance (S= 0.5 pour t=25), tandis que la fonction de survie des fumeurs de +50 ans est toujours supérieure à 0.5 pour t = 75. Une personne agée a plus de raisons d'arrêter de fumer qu'un jeune, et se trouve moins dans des environnements à risques ?
+
+## ageGroup4
+
+```{r}
+covariable = data$ageGroup4
+covariable.influence(covariable, X, delta)
+```
+
+Les personnes de +65 ans reprennent plus tôt que les 50-65. Pour continuer à fumer à 65 ans, lls doivent être habitués et cela doit leur sembler naturel. De plus, fumer à 65 ans signifie qu'ils n'ont jamais réussi à arrêter durant leur vie. Intuitivement, c'est donc naturel qu'ils échouent à arrêter à nouveau.
+
+## employment
+
+```{r}
+covariable = data$employment
+covariable.influence(covariable, X, delta)
+```
+
+Je ne sais pas ce que les classes signifient mais les pt sont plus susceptibles de reprendre, ensuite les other, et ensuite les ft.
+
+## Réflexions sur la pertinence de cette méthode
+
+Les classes ne sont pas équilibrées. Or, la fonction de survie dépend grandement du n, le nombre d'individus de l'échantillon. Ainsi, y a t-il un sens à comparer des échantillons ayant des n différents ?
+
+# Autres idées non implémentées
+
+## Calcul manuel de l'intervalle de confiance de S(t) à partir du théorème de normalité asymptotique de KM
+
+C'est analogue au TCL
+
+```{r}
+
+```
+
+## Régression logistique
+
+Les données censurées correspondent aux individus ayant survécu jusqu'à la fin de l'étude.
+
+On peut donc fitter une régression logistique, en utilisant delta comme variable binaire de succès. L'étude des p_valeurs du test de Wald nous indiquera quelles variables sont corrélées avec le fait de survivre ou non.
+
+```{r}
+
+```
+
+## Tables d'adjacences des covariables et de relapse
+
+Les covariables sont toutes catégorielles.
+
+On peut donc afficher les proportions de survie finales selon l'appartenance à chaque catégorie, si les résultats diffèrent, cela signifie que cette covariable est importante.

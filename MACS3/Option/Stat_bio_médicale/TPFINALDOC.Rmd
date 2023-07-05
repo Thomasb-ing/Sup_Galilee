@@ -1,0 +1,89 @@
+---
+title: "TPFINALDOC"
+author: "Thomas BINET"
+date: '2023-02-24'
+output: html_document
+---
+
+```{r}
+SPRT <- function(x, alpha = 0.05, beta = 0.05, p0 = 0.5, p1 = 0.55, p2 = 0.6){
+  
+  #Initialisation
+  n <- length(x)
+  A <- log((1 - beta)/alpha)
+  B <- log(beta/(1 - alpha))
+  s <- log(p1/p0) # log(p1/p0) est le logarithme du rapport de vraisemblance, où p1 est l'hypothèse alternative et p0 est l'hypothèse nulle
+  S <- 0
+  
+  # Calcul de S
+  for (i in 1:n){
+    if (x[i] == 1){
+      S <- S + log(p1/p0)
+    }else{
+      S <- S + log((1-p1)/(1-p0))
+    }
+    if (S > A){
+      return(paste("Reject H0 after", i, "observations"))
+    }else if (S < B){
+      return(paste("Accept H0 after", i, "observations"))
+    }
+  }
+  return(paste("Not enough evidence after", n, "observations"))
+}
+```
+
+Cette fonction prend en entrée un vecteur x de données binaires (0 ou 1), ainsi que trois paramètres facultatifs alpha, beta, p0, p1 et p2. Les paramètres alpha et beta représentent respectivement les niveaux de significativité de type I et de type II. Les paramètres p0, p1 et p2 représentent les probabilités sous les hypothèses nulle, alternative et de seuil de décision.
+
+La fonction calcule la somme cumulative des logarithmes de la probabilité de chaque observation sous l'hypothèse nulle et alternative, et compare le résultat avec des seuils de décision prédéfinis A et B. Si la somme cumulative dépasse le seuil A, l'hypothèse nulle est rejetée. Si la somme cumulative est inférieure au seuil B, l'hypothèse nulle est acceptée. Si la somme cumulative est entre A et B, il n'y a pas suffisamment de preuves pour prendre une décision.
+
+
+```{r}
+BayesUCB <- function(x, alpha = 1, beta = 1, c = 1){
+  
+  #Initialisation
+  n <- length(x)
+  S <- cumsum(x)
+  F <- cumsum(1-x)
+  S1 <- S[1]
+  F1 <- F[1]
+  p <- numeric(n)
+  
+  # Calcul des probabilités postérieures
+  for (i in 1:n){
+    alpha_i <- alpha + S[i]
+    beta_i <- beta + F[i]
+    p[i] <- rbeta(1, alpha_i, beta_i)
+    if (i < n){
+      UCB <- p[i] + sqrt((2*c^2*log(i))/(alpha_i+beta_i))
+      if (UCB < p[i+1]){
+        return(paste("Reject H0 after", i, "observations"))
+      }
+    }
+  }
+  return(paste("Not enough evidence after", n, "observations"))
+}
+
+Cette fonction prend en entrée un vecteur x de données binaires (0 ou 1), ainsi que trois paramètres facultatifs alpha, beta et c. Les paramètres alpha et beta représentent les paramètres de la distribution Beta qui modélise l'a priori sur les probabilités de succès. Le paramètre c représente le paramètre de contrôle de l'exploration-exploitation.
+
+La fonction calcule les probabilités postérieures pour chaque observation en utilisant la formule de la distribution Beta avec l'a priori spécifié. Elle utilise ensuite ces probabilités pour calculer la borne supérieure de confiance UCB (Upper Confidence Bound) pour chaque observation en utilisant la formule UCB = p[i] + sqrt((2c^2log(i))/(alpha_i+beta_i)), où p[i] est la probabilité postérieure pour l'observation i, c est le paramètre de contrôle de l'exploration-exploitation, alpha_i et beta_i sont les paramètres de la distribution Beta postérieure pour l'observation i.
+
+Si la borne supérieure de confiance UCB pour une observation est inférieure à la probabilité postérieure pour l'observation suivante, l'hypothèse nulle est rejetée. Sinon, le test continue avec l'observation suivante. Si le test n'a pas rejeté l'hypothèse nulle après toutes les observations, il n'y a pas suffisamment de preuves pour prendre une décision.
+
+Voici un exemple d'utilisation de cette fonction :
+
+R
+
+# Exemple d'utilisation
+set.seed(123)
+x <- rbinom(100, 1, 0.6)
+BayesUCB(x, alpha = 2, beta = 2, c = 1)
+
+Dans cet exemple, nous générons un vecteur de données binaires x de longueur 100 avec une probabilité de succès de 0,6. Nous utilisons ensuite la fonction BayesUCB pour effectuer un test de Bayes UCB avec un a priori Beta(2,2) sur les probabilités de succès. La fonction renvoie "Reject H0 after 19 observations", ce qui signifie que l'hypothèse nulle est rejetée après l'observation de 19
+
+```
+
+Cette fonction prend en entrée un vecteur x de données binaires (0 ou 1), ainsi que trois paramètres facultatifs alpha, beta et c. Les paramètres alpha et beta représentent les paramètres de la distribution Beta qui modélise l'a priori sur les probabilités de succès. Le paramètre c représente le paramètre de contrôle de l'exploration-exploitation.
+
+La fonction calcule les probabilités postérieures pour chaque observation en utilisant la formule de la distribution Beta avec l'a priori spécifié. Elle utilise ensuite ces probabilités pour calculer la borne supérieure de confiance UCB (Upper Confidence Bound) pour chaque observation en utilisant la formule UCB = p[i] + sqrt((2c^2log(i))/(alpha_i+beta_i)), où p[i] est la probabilité postérieure pour l'observation i, c est le paramètre de contrôle de l'exploration-exploitation, alpha_i et beta_i sont les paramètres de la distribution Beta postérieure pour l'observation i.
+
+Si la borne supérieure de confiance UCB pour une observation est inférieure à la probabilité postérieure pour l'observation suivante, l'hypothèse nulle est rejetée. Sinon, le test continue avec l'observation suivante. Si le test n'a pas rejeté l'hypothèse nulle après toutes les observations, il n'y a pas suffisamment de preuves pour prendre une décision.

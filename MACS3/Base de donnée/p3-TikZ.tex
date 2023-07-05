@@ -1,0 +1,900 @@
+\chapter{Dessiner avec \texttt{TikZ}}
+
+\label{chap_dessin_tikz}Le seul moyen de pouvoir profiter de toutes les fonctionnalités \LaTeX{} précédemment décrites nécessite de compiler, \textit{a minima}, sous \verb?PDFLaTeX? (ou \verb?XeLaTeX? s'il y a un changement de police). Dans ce cas, pour dessiner, il faut utiliser \texttt{TikZ}.
+
+Si, comme moi, tu étais un habitué de \texttt{PSTricks}, il peut sembler déroutant de passer à \texttt{TikZ} mais, avec la pratique, il devient facile de réaliser simplement quelques figures. Mais ce n'est pas tout. \texttt{TikZ} est aussi extrêmement puissant, avec énormément de possibilités, comme tu vas pouvoir le découvrir. \\
+
+Et si jamais tu t'intéresses à la documentation officielle\footnote{Disponible sur le site du CTAN par exemple, directement sur : \url{http://www.ctan.org/pkg/pgf}}, sache qu'il faut mieux aller d'abord regarder le sommaire ou l'index. Avec plus de 1000 pages d'aide et de code, elle est plutôt bien fournie !
+
+\section{Démarrer sous \texttt{TikZ}}
+
+Tu vas difficilement pouvoir utiliser \texttt{TikZ} si tu ne charges pas le package associé : \verb?tikz?. Si, comme nous le verrons plus tard, tu dois charger des fonctionnalités supplémentaires de \texttt{TikZ}, il faut utiliser, \textbf{juste après} avoir chargé le package, la commande \verb?\usetikzlibrary{nom}?.
+
+Quant au dessin en lui-même, tout comme pour \texttt{PSTricks}, il faut charger un environnement. Ici, il se nomme \verb?tikzpicture? et n'a pas besoin d'options supplémentaires comme la taille du cadre. Bien au contraire, \texttt{TikZ} produit toujours le résultat le plus compact possible, comme nous le verrons dans un exemple juste après. \\
+
+\textcolor{BrickRed}{\textbf{Il existe une règle capitale sous \texttt{TikZ} :}} chaque qui utilise une commande propre à \texttt{TikZ} se termine par un ``\verb?;?''. Toujours. C'est le seul point important à retenir. Tout le reste va finir par rentrer avec un peu de pratique.
+
+Ensuite, s'il est plus courant de travailler avec des coordonnées cartésiennes $(x,y)$, sache aussi que les coordonnées polaire $(\theta:R)$ sont disponibles, écrites dans le même format que précédemment. \\
+
+Ensuite, pour commencer en douceur, le tracé d'un trait sous \texttt{TikZ} se fait de la manière suivante : \begin{center} \verb?\draw (x0,y0) -- (x1,y1);? \end{center} 
+
+La commande \verb?\draw? permet de garantir le tracé tandis que les points à relier par un trait sont donc séparés par ``\verb?--?''. Il existe des fonctions propres à \texttt{TikZ} pour tracer un rectangle -- \verb?(x0,y0) rectangle (x1,y1)? -- ou un cercle -- \verb?(x,y) circle (R)?. Il faut continuer d'utiliser la commande \verb?\draw? au préalable.
+
+Il est aussi possible d'augmenter l'épaisseur du trait ou de changer sa couleur grâce à des options à introduire entre crochets ``\verb?[]?'', de la manière suivante : \begin{center} \verb?\draw[options] ...;? \end{center}
+
+Je ne vais pas m'amuser à lister toutes les options possibles et envisageables. Les plus basiques sont présentées ci-après. Les autres sont à chercher en fonction des besoins. \\
+
+Bien, voici un premier exemple pour avoir un aperçu concret des bases :
+
+\begin{code}{Démarrer sous \texttt{TikZ}}
+\documentclass[a4paper, 12pt]{report}
+
+\usepackage{tikz}
+
+
+\begin{document}
+
+\begin{tikzpicture}
+\draw (0,0) -- (1,1); % Trait entre (0,0) et (1,1)
+\end{tikzpicture}
+\hfill
+\begin{tikzpicture}
+\draw (2,2) -- (3,3); % Trait entre (2,2) et (3,3) ... sur le code !
+% Dans le rendu final, aucune différence avec le code précédent
+\end{tikzpicture}
+\hfill
+\begin{tikzpicture}
+\draw (0,0) rectangle (1,1);
+\end{tikzpicture}
+\hfill
+\begin{tikzpicture}
+\draw (0.5,0.5) circle (0.5);
+\end{tikzpicture}
+
+\vspace{\baselineskip}
+
+% Augmenter l'espace blanc autour de l'image (nécessaire de temps en temps)
+% --> Créer une forme "incolore" (blanche par défaut) suffisamment grande
+\begin{tikzpicture}
+\draw[white] (0,0) rectangle (13,2);
+%\draw[red] (0,0) rectangle (13,2);
+
+\draw (6,0) -- (7,1);
+\end{tikzpicture}
+
+\vspace{\baselineskip}
+
+% Un apercu des options de base
+\begin{tikzpicture}
+% Epaisseur du trait : line width = "longueur"
+\draw[line width = 1.3mm] (0,0) -- (1,1);
+\draw[line width = 5pt] (2,1) -- (3,0);
+
+% Le "pt" est l'unité par défaut dans les options
+\draw[line width = 8] (4,0) -- (5,1);
+% Mais les coordonnées sont par défaut en "cm" 
+\end{tikzpicture}
+%\hfill
+\begin{tikzpicture}
+% Epaisseur du trait : tailles prédéfinies
+\draw[thin] (0,0) -- (1,1);
+\draw[thick, dashed] (2,1) -- (3,0); % Ligne en tirets
+\draw[ultra thick, dotted] (4,0) -- (5,1); % Ligne en pointillés
+\end{tikzpicture}
+%\hfill
+\begin{tikzpicture}
+% Changement de couleur d'un trait
+\draw[blue] (0,0) -- (1,1); % Plus concis et écriture implicite
+\draw[color = orange] (2,1) -- (3,0); % Le nom de l'option
+\end{tikzpicture}
+
+\vspace{\baselineskip}
+
+\begin{tikzpicture}
+% Changement de couleur d'un contour fermé (contour)
+\draw[red] (0,0) rectangle (1,1);
+\draw[color = green] (2,1) rectangle (3,0);
+\draw[draw = purple] (4,0) rectangle (5,1); % Option étrange mais va prendre son sens après
+\end{tikzpicture}
+\hfill
+\begin{tikzpicture}
+% Changement de couleur d'un contour fermé (remplissage)
+\draw[fill = red] (0,0) rectangle (1,1); % draw de base (donc contour noir) avec remplissage rouge
+\fill[color = green] (2,1) rectangle (3,0); % Remplissage pur (sans contour)
+\fill[fill = purple] (4,0) rectangle (5,1); % Idem
+\end{tikzpicture}
+
+\vspace{\baselineskip}
+
+\begin{tikzpicture}
+% Changement de couleur d'un contour fermé (contour ET remplissage)
+\draw[red, fill = blue] (0.5,0.5) circle (0.5);
+\draw[draw = green, fill = orange] (2.5,0.5) circle (0.5);
+\filldraw (4.5,0.5) circle (0.5); % Nouvelle commande : contour et remplissage
+\filldraw[brown] (6.5,0.5) circle (0.5);
+\filldraw[pink, draw = gray] (8.5,0.5) circle (0.5); % etc.
+\end{tikzpicture}
+
+\end{document}
+\end{code}
+
+Tu as tout compris ? Il existe plein d'options extrêmement pratiques mais la couleur et l'épaisseur du trait sont les plus couramment utilisées au début. Il existe aussi des épaisseurs prédéfinies, qui fonctionnent très bien et évitent de perdre du temps à trouver la ``bonne'' épaisseur :
+
+\begin{itemize}[label = \ding{118}]
+\begin{multicols}{2} \raggedcolumns
+\item \verb?ultra thin? : 0.1pt,
+
+\item \verb?very thin? : 0.2pt,
+
+\item \verb?thin? : 0.4pt (défaut),
+
+\item \verb?semithick? : 0.6pt, 
+
+\item \verb?thick? : 0.8pt,
+
+\item \verb?very thick? : 1.2pt, 
+
+\item \verb?ultra thick? : 1.6pt.
+\end{multicols}
+\end{itemize} 
+
+Essayons maintenant de tracer des figures un peu plus complexes désormais, avec des coordonnées polaires pour changer et les manipuler un peu.
+
+\section{Un polygone régulier}
+
+Je pense que tu dois avoir déjà entendu parler d'un polygone régulier. Pour la faire simple et éviter de faire mon pédant trop longtemps, il s'agit d'une figure géométrique fermée, à $N$ côtés de même longueur. 
+
+Une façon très simple d'en créer consiste à passer par des coordonnées polaires. En effet, les sommets $S_i$ d'un polygone régulier sont tous placés sur un cercle de centre $O$ quelconque, de rayon $R$ et la droite $(OS_i)$ forme un angle de $\frac{i \times 360}{N}$ avec l'axe des abscisses. \\
+
+Enfin, pour revenir sur l'utilisation de \texttt{TikZ} en elle-même, il faut savoir que toute figure définie par des traits et dont le point d'arrivée coïncide avec le point de départ (figure fermée) doit se conclure de la manière suivante : \verb?-- cycle;?.
+
+Cette commande permet de proprement fermer la figure. Je te laisse aller faire des recherches ou des essais pour voir la différence avec une fermeture manuelle. Allons plutôt dessiner un polygone régulier, comme un triangle équilatéral pour commencer simplement :
+
+\begin{code}{Un triangle équilatéral}
+\documentclass[a4paper, 12pt]{report}
+
+\usepackage{tikz}
+
+
+\begin{document}
+
+% Triangle équilatéral, inscrit dans un cercle de rayon R
+% Coordonnées polaires ==> centre (0,0)
+\begin{center}
+\begin{tikzpicture}
+% Rayon R choisi arbitrairement à 3cm
+\draw (90:3) -- (210:3) -- (330:3) -- cycle;
+\draw[green] (60:3) -- (180:3) -- (300:3) -- cycle; % Une autre possibilité
+\draw[red] circle (3); % Pas de centre ==> (0,0) par défaut
+\end{tikzpicture}
+\end{center}
+
+\end{document}
+\end{code}
+
+Avouons que c'est plus pratique que de devoir placer 2 points et calculer la position du dernier, surtout si les calculs ne donnent pas une valeur exacte. Ici, notre triangle est bel et bien équilatéral. Il est aussi possible de passer par des points définis au préalable :
+
+\begin{code}{Définir des points}
+\documentclass[a4paper, 12pt]{report}
+
+\usepackage{tikz}
+
+
+\begin{document}
+
+% Le principe : 
+% \coordinate (nom_point) at (x,y)/(theta:R);
+\begin{center}
+\begin{tikzpicture}
+\coordinate (A) at (90:3);
+\coordinate (B) at (210:3);
+\coordinate (C) at (330:3);
+
+\draw (A) -- (B) -- (C) -- cycle;
+\end{tikzpicture}
+\end{center}
+
+\end{document}
+\end{code}
+
+\section{Automatiser les dessins}
+
+Bon, tracer un triangle équilatéral, c'est bien. Tracer un hexagone, avec un copier-coller et un peu de patience, c'est faisable. Un tridécagone (polygone régulier à 13 côtés) \dots{} bon, rien d'impossible mais le copier-coller et les modifications ne constituent clairement pas une solution optimale.
+
+Fort heureusement, il existe le principe des coordonnées absolues et relatives. Pour faire simple, tracer un dessin grâce à une série de coordonnées absolues revient à connaître les positions de toutes les coordonnées par rapport à un repère, l'origine $(0,0)$ généralement mais il peut aussi s'agir d'un autre point.
+
+Avec les coordonnées relatives, peu importe la position exacte de tous les points : il suffit juste de connaître la position d'un point par rapport à celui qui le précède ! \\
+
+Sous \texttt{TikZ}, les coordonnées absolues ne requiert aucune option spécifique, hormis la position du point. Les coordonnées relatives sont reconnaissables grâce au ``\verb?++?'' et il existe un mix des deux, un peu subtil, qui utilise un ``\verb?+?''.
+
+L'aide officielle peut servir à commencer à digérer mes explications : \og You can add a single + sign in front of a coordinate or two of them as in +(1cm,0cm) or ++(0cm,2cm). Such coordinates are interpreted differently. The first form means ``1cm upwards from the previous specified position'' ; the second means ``2cm to the right of the previous specified position, \textbf{making this the new specified position.}'' \fg{}
+
+Bien, je pense qu'un petit exemple ne sera pas de trop pour aborder cette notion :
+
+\begin{code}{Coordonnées absolues et relatives}
+\documentclass[a4paper, 12pt]{report}
+
+\usepackage{tikz}
+
+
+\begin{document}
+
+% Sans les + ou ++
+\begin{tikzpicture}
+\draw[gray, dotted] (0,-1) grid (3,1); % Une trame de fond, pour aider
+
+\draw (0,0) node[circle, fill = red, inner sep = 2pt] {} -- (1,1) -- (2,0) -- (0,-1) node[circle, fill = blue, inner sep = 2pt] {}; % Le point de départ est toujours le point à partir duquel est appliqué le déplacement
+\end{tikzpicture}
+\hfill
+% Avec le +
+\begin{tikzpicture}
+\draw[gray, dotted] (0,-1) grid (3,1); % Une trame de fond, pour aider
+
+\draw (0,0) node[circle, fill = red, inner sep = 2pt] {} -- (1,1) --+ (2,0) --+ (0,-1) node[circle, fill = blue, inner sep = 2pt] {}; % Le dernier point sans "+" est toujours le point à partir duquel est appliqué le déplacement
+\end{tikzpicture}
+\hfill
+% Avec le ++
+\begin{tikzpicture}
+\draw[gray, dotted] (0,-1) grid (3,1); % Une trame de fond, pour aider
+
+\draw (0,0) node[circle, fill = red, inner sep = 2pt] {} --++ (1,1) --++ (2,0) --++ (0,-1) node[circle, fill = blue, inner sep = 2pt] {}; % Chaque nouveau point est le point de départ pour le déplacement d'après
+\end{tikzpicture}
+
+% Je reviendrai sur les "node" par la suite
+% Ici, ils permettent un point de repère pour distinguer le départ du tracé de sa fin
+
+\end{document}
+\end{code}
+
+Et cette méthode s'applique aussi pour les coordonnées polaires. Appliquons alors cette découverte pour nos polygones réguliers. Après tout, il s'agit de prendre le point précédent et de le faire pivoter du bon angle :
+
+\begin{code}{Coordonnées relatives polaires}
+\documentclass[a4paper, 12pt]{report}
+
+\usepackage{tikz}
+
+
+\begin{document}
+
+% Cas d'un triangle équilatéral
+\begin{tikzpicture}
+\draw (0,0) -- (2,0) --++ (120:2) -- cycle;
+\end{tikzpicture}
+\hfill
+% Cas d'un carré
+\begin{tikzpicture}
+\draw (0,0) -- (2,0) --++ (90:2) --++ (180:2) -- cycle;
+\end{tikzpicture}
+\hfill
+% Cas d'un pentagone
+\begin{tikzpicture}
+\draw (0,0) -- (2,0) --++ (72:2) --++ (144:2) --++ (216:2) -- cycle;
+\end{tikzpicture}
+
+\end{document}
+\end{code}
+
+\begin{attentionbox}{Une question ?}
+\og C'est marrant ton astuce pour tracer le polygone en polaire mais ce n'est toujours pas pratique. Il faut quand même changer à la main les valeurs pour chaque polynôme \dots{} \fg{} \\
+
+En effet \dots{} mais j'allais justement annoncer une magnifique solution automatisée !
+\end{attentionbox}
+
+Il existe trois outils que j'ai découverts suite à mon passage à \texttt{TikZ} et qui se révèlent très utiles dans ce cas :
+
+\begin{itemize}[label = \ding{213}]
+\item \textcolor{OrangeRed}{la définition de variable :} tu peux créer toi-même ta propre variable sous \LaTeX{}\footnote{Très exactement, il s'agit d'une macro. J'apporterai sûrement un correctif et une explication plus poussée lors de la prochaine mise à jour de ce guide et après quelques recherches.}. Appliquée à \texttt{TikZ}, tu peux l'associer en tant que nombre (nombre de côtés d'un polygone régulier par exemple) ou que longueur (rayon du cercle dans lequel le dit polygone est inscrit). Il suffit d'utiliser la commande suivante : \begin{center} \verb?\def\nom{valeur}? \end{center}
+
+\item \textcolor{OrangeRed}{le calcul de nouvelles variables :} propre à \texttt{TikZ}, cette possibilité peut parfois servir. En l'occurrence, nous dessinons un polygone régulier inscrit dans un cercle de rayon fixé, sans connaître la valeur d'un côté (même si c'est bien plus simple de considérer la taille d'un cercle pour l'affichage). Du coup, si tu tiens à avoir un polygone avec une taille d'arête bien spécifique, tu peux calculer le rayon nécessaire !Pour ce faire, il faut utiliser la commande : \begin{center} \verb?\pgfmathsetmacro\nom{\calcul}? \end{center}
+
+Il est aussi possible d'utiliser des variables déjà définies pour les intégrer dans le calcul. Les possibilités offertes deviennent alors très intéressantes, \\
+
+\item \textcolor{OrangeRed}{la boucle \verb?for? :} oui, comme en informatique, il est possible d'indiquer à \LaTeX{}, et plus particulièrement à \texttt{TikZ} dans notre cas, des tâches répétitives. La formulation est la suivante : \begin{center} \verb?\foreach \nom_var in {1,...,N} {commandes}? \end{center}
+
+Naturellement, j'ai mis \verb?{1,...,N}? pour l'exemple mais tu peux mettre n'importe quelle valeur numérique, comme \verb?{2,3,4}?, ou même des lettres ! \\
+\end{itemize}
+
+Voici donc une solution simple qui fonctionne. Il y a sûrement encore moyen de l'améliorer, comme permettre à chaque trait d'avoir une couleur différente (avec \verb?cycle? en fin de ligne sinon c'est moche) mais elle fonctionne déjà plutôt bien :
+
+\begin{code}{Une solution automatisée}
+\documentclass[a4paper, 12pt]{report}
+
+\usepackage{tikz}
+
+
+\begin{document}
+
+% Un polygone régulier
+\begin{tikzpicture}
+% Paramétrage
+\def\poly{13} % Nombre entier supérieur à 1
+% % Limite de calcul LaTeX fixée à 16 383 ...
+\pgfmathsetmacro\polyg{\poly - 1}
+\def\R{2} % 0.25\linewidth est aussi une distance ... 
+
+% Tracé du polygone
+\draw[orange] (90:\R) \foreach \i in {1,...,\polyg} {-- (90-\i/\poly*360:\R)} -- cycle; % Usage de \polyg pour bien fermer avec un "cycle"
+\end{tikzpicture}
+\hfill
+% Un amortisseur
+\begin{tikzpicture}
+\coordinate (O) at (0,0); % Possibilité de changer le 0,0 en argument d'une nouvelle commande ...
+
+\draw (O) --++ (2,0) --++ (0,-1) --++ (2,0) ++ (-2,1) --++ (0,1) --++ (2,0) node[above left] {\Large{}$\mu$} ++ (-1,0) --++ (0,-2) ++ (0,1) --++ (2,0); 
+% Utilisation de "++" sans "--" pour déplacer la coordonnée relative (on rebrousse chemin dans le tracé) sans tracer un trait
+\end{tikzpicture}
+
+\end{document}
+\end{code}
+
+\begin{conseilbox}{La gestion des unités}
+Il peut arriver que tu définisses une variable mais que sa valeur ne donne pas le résultat attendu, en terme de taille. Par exemple, un rayon \verb?\def\R{50}? de 50pt ou 50mm au lieu de 50cm par défaut, un peu grand, surtout sur une feuille A4 ; une épaisseur de trait \verb?\def\sep{13}? de 13mm au lieu de 13pt par défaut.
+
+Seulement, écrire \verb?circle (\R{}pt)? ou \verb?line width = \sep mm? ne fonctionne pas car \LaTeX{} n'arrive pas à combiner une variable avec du texte \dots{} \\
+
+Heureusement, il existe donc un moyen très simple de résoudre ce problème. Il faut définir une variable unité : \verb?\def\unit{unité}?. Par exemple, nous pouvons écrire \verb?\def\unit{pt}? ou \verb?\def\mm{mm}? s'il y a plusieurs unités et que tu ne veux pas les confondre.
+
+Il faut ensuite écrire, par exemple, \verb?circle (\R\unit)? ou \verb?line width = \sep\mm?, et le tour est joué !
+\end{conseilbox}
+
+\begin{attentionbox}{La limite de calcul sous \texttt{TikZ}}
+Avec les commandes \verb?\def? et \verb?\pgfmathsetmacro?, il existe une limite de calcul, fixée à 16 383, très exactement $\frac{2^{30} - 1}{2^{16}}$. Du coup, si tu veux tracer un polygone de 17 000 côtés, c'est impossible. Et je n'aborde pas l'intérêt d'un tel tracé : autant utiliser un cercle dans ce cas !
+
+Généralement, pour des cas raisonnables, il ne devrait pas y avoir de problème mais il est bon de connaître cette notion. \\
+
+Dans le cas où une telle erreur apparaît, le compilateur devrait afficher l'erreur \og \verb?! Dimension too large.? \fg{}. \textcolor{Red}{\textbf{Il peut aussi arriver que cette limite apparaisse alors que les calculs ne dépassent pas la valeur interdite.}} 
+
+Par exemple, trace un polygone de 50 côtés avec mon code précédent et essaye les deux possibilités suivantes dans la boucle \verb?for? :
+
+\begin{itemize}[label = \ding{213}]
+\item \verb?{-- (90-\i/\poly*360:\R)}? : aucun problème,
+
+\item \verb?{-- (90-\i*360/\poly:\R)}? : problème \dots{} alors que, d'un point de vue purement formel, le calcul est le même !
+\end{itemize}
+
+De ce que j'ai compris, il s'agit d'une erreur due à un dépassement de pile (\textit{stack overflow}) sous \texttt{TikZ}. Pour l'éviter, il faut \textbf{toujours privilégier les divisions au début du calcul.}
+\end{attentionbox}
+
+\section{Dessiner des figures mathématiques}
+
+Je ne vais pas m'attarder sur cette section, juste donner deux pistes de recherche. Si tu as beaucoup de figures géométriques à dessiner, et surtout des figures mathématiques, avec beaucoup de sommets, des intersections, \dots{}, tu peux :
+
+\begin{itemize}[label = \ding{213}]
+\item utiliser le logiciel gratuit \texttt{GeoGebra} et exporter les figures en code \texttt{TikZ},
+
+\item utiliser le package \verb?tkz-euclide?, qui possède une documentation bien fournie et beaucoup de commandes intéressantes. \\
+\end{itemize}
+
+% Code pour tracer une fonction mathématiques
+
+Bien, maintenant que nous connaissons le fonctionnement de \texttt{TikZ} et l'avons un peu manipulé, voyons maintenant des méthodes élégantes pour gérer la forme soit toutes les options accessibles sous \verb?\draw?.
+
+\section{Gestion des styles}
+
+Pour commencer, avant même de définir le principe du style sous \texttt{TikZ}, je tiens à aborder le cas toujours assez délicat de l'importation du package \verb?xcolor?, et encore plus de ses options, dont \verb?dvipsnames? pour ma part.
+
+Il faut déjà savoir qu'il faut toujours charger \verb?xcolor? avant \verb?tikz?. Mais, dans certains cas (utilisation d'autres packages principalement), il peut arriver qu'il y ait un conflit et que l'erreur \verb?Option clash for package xcolor? surgisse.
+
+Dans ce cas, la seule solution trouvée jusqu'à présent remplace le chargement de \verb?xcolor? dans le préambule par la ligne : \begin{center} \verb?\PassOptionsToPackage{dvipsnames}{xcolor}? \end{center}
+
+Et si jamais cette solution ne fonctionne toujours pas, placer cette ligne avant même le \verb?\documentclass? convient en dernier recours. \\
+
+Venons-en maintenant aux styles. Imaginons un instant que nous avons plein de traits, de rectangles et de cercles à tracer. Bref, pleins de figures qui requiert d'utiliser beaucoup de \verb?\draw?. Nous voulons derrière que toutes les figures aient le même format (couleur, épaisseur de trait, \dots{}).
+
+Il est alors possible de définir un style global pour un dessin (environnement \verb?tikzpicture?). Au lieu d'écrire \verb?\draw[draw_options]? à chaque fois et de devoir tout changer manuellement, il est possible d'ajouter des options à l'environnement de la manière suivante : \begin{center} \verb?\begin{tikzpicture}[options]? \end{center}
+
+Au contraire, si nous avons besoin de définir plusieurs styles distincts, c'est possible avec la syntaxe suivante : \begin{center} \verb?\tikzstyle{nom_style} = [draw_options]? \end{center}
+
+\noindent{}avant d'appeler le style en question dans les options : \verb?\draw[nom_style]?. 
+
+Enfin, il est toujours possible de procéder à des changements ponctuels dans les options d'un \verb?\draw? : \textbf{placés après un style,} ils prédomineront à coup sûr. \\
+
+Un petit exemple pour bien comprendre, comme d'habitude :
+
+\begin{code}{Les styles sous \texttt{TikZ}}
+\documentclass[a4paper, 12pt]{report}
+
+\usepackage[dvipsnames]{xcolor}
+
+%\PassOptionsToPackage{dvipsnames}{xcolor} % Si erreur avec xcolor --> Enlever le commentaire sur cette ligne et mettre la ligne précédente en commentaire
+\usepackage{tikz}
+
+
+\begin{document}
+
+% Style global
+\begin{tikzpicture}[thick, Red, dashed]
+\def\R{1.5}
+\draw circle (\R);
+\draw (\R,0) --++ (-2*\R,0);
+\draw (0,\R) --++ (0,-2*\R);
+\end{tikzpicture}
+\hfill
+% Styles locaux
+\begin{tikzpicture}[thick, Red, dashed]
+\def\R{1.5}
+\draw[solid, thin] circle (\R); % solid = trait plein
+
+\draw (\R,0) --++ (-2*\R,0); % Bien mettre un * pour les calculs
+% A ne pas confondre avec l'utilisation des longueurs : 0.5\linewidth, ...
+\draw[Cyan, ultra thick] (0,\R) --++ (0,-2*\R);
+\end{tikzpicture}
+\hfill
+% Style groupé
+\begin{tikzpicture}[thick, Red, dashed]
+\def\R{1.5}
+
+\tikzstyle{style} = [Orchid, line width = 4pt, line cap = round, dash pattern = on 0pt off 2.5\pgflinewidth] % Style dotted pas très "dot" --> utilisation de line cap & dash pattern
+
+\draw circle (\R);
+
+\draw[style] (\R,0) --++ (-2*\R,0);
+\draw[style, LimeGreen] (0,\R) --++ (0,-2*\R); % Toujours possible de modifier un style prédéfini
+% A bien placer après le nom du style : options lues et appliquées de gauche à droite
+\end{tikzpicture}
+
+\end{document}
+\end{code}
+
+Bien évidemment, ici, le code est très simple et cette notion n'a vraiment d'intérêt quand tu as beaucoup de \verb?\draw? \dots{} ou que tu te rends compte que tu fais beaucoup de changements dans les options. Il devient alors plus intéressant d'automatiser les options avec des styles.
+
+Maintenant que la mise en forme est bien définie et que nous savons tracer quelques figures élémentaires, pimentons un peu les possibilités : ajoutons du texte.
+
+\section{Insérer du texte}
+
+Il n'y a qu'une seule façon d'écrire dans un dessin réalisé sous \texttt{TikZ} : les \verb?node?. Très exactement, les \verb?node? permettent de placer à peu près tout et n'importe quoi à l'endroit souhaité dans le dessin, en particulier du texte.
+
+Un \verb?node? s'appelle par une commande, selon la syntaxe suivante : \begin{center} \verb?\node[draw_options] at (x,y) {Texte};? \end{center}
+
+\noindent{}avec plein de possibilités pour \verb?draw_options? comme par exemple :
+
+\begin{itemize}[label = \ding{213}]
+\item \verb?draw? : pour afficher le cadre du \verb?node?,
+
+\item \verb?circle? : pour avoir un cercle comme cadre au lieu d'un rectangle (défaut). Différents formats sont disponibles et sont explicités dans les exemples ci-après,
+
+\item \verb?draw = color? : la couleur de la bordure du cadre,
+
+\item \verb?fill = color? : la couleur de remplissage du cadre,
+
+\item \verb?text = color? : la couleur du texte,
+
+\item \verb?minimum width = taille? : largeur minimale du cadre,
+
+\item \verb?text width = taille? : largeur de la boîte (invisible) dans laquelle est placée le texte. Si \verb?text width? est inférieur à \verb?minimum width?, la boîte en question est centrée,
+
+\item \verb?minimum height = taille? : hauteur minimale du cadre,
+
+\item \verb?align = position?, avec \verb?position? qui peut prendre les valeurs \verb?left?, \verb?center? ou \verb?right? : positionnement du texte dans sa boîte (invisible). \\
+\end{itemize}
+
+Un exemple très simple d'application peut prendre la forme suivante :
+
+\begin{code}{Utilisation des \texttt{node}}
+\documentclass[a4paper, 12pt]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+
+\usepackage{tikz}
+
+
+\begin{document}
+
+% La base sur les node
+\begin{tikzpicture}
+\draw (0,0) -- (1,0);
+
+\node at (0.5,0.5) {Texte};
+\end{tikzpicture}
+\hfill
+% Quelques options
+\begin{tikzpicture}
+\node[draw] at (0,0) {some text}; % Affichage de la bordure rectangulaire du node
+
+\node[draw, circle, align = left] at (4,0) {some text \\ spanning three lines \\ with manual line breaks}; % circle : format du cadre (rectangle par défaut)
+
+\node[draw = Green, fill = Red, text = White, thick, minimum width = 5cm, text width = 4cm, minimum height = 2cm, align = center] at (2,-2) {some text spanning three lines with automatic line breaks};
+\end{tikzpicture}
+
+\end{document}
+\end{code}
+
+Pour avoir un aperçu des différents formats disponibles, c'est par ici :
+
+\begin{code}{Les différents formats de \texttt{node}}
+\documentclass[a4paper, 12pt]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+
+\usepackage{tikz}
+\usetikzlibrary{shapes} % Pour certains formats de node
+
+
+\begin{document}
+
+% Formats : rectangle, circle, ellipse, diamond, circle split, forbidden sign, cross out, strike out
+% regular polygon, regular polygon sides = 5
+% star, star points = 7 + star point ratio = 0.8 (bonus)
+\begin{tikzpicture}
+\tikzstyle{ann} = [draw = none, fill = none,right]
+
+% Affichage sous forme d'un tableau
+\matrix[nodes = {draw, ultra thick, fill = blue!20}, row sep = 0.3cm, column sep = 0.5cm] {%
+	\node[draw = none, fill = none] {Plain node}; &
+	\node[rectangle] {Rectangle}; &
+	\node[circle] {Circle}; \\
+	\node[ellipse] {Ellipse}; &
+	\node[circle split] {Circle \nodepart{lower} split}; &
+	\node[forbidden sign,text width=4em, text centered] {Forbidden sign}; \\
+	\node[diamond] {Diamond}; &
+	\node[cross out] {Cross out}; &
+	\node[strike out] {Strike out}; \\
+	\node[regular polygon, regular polygon sides = 5] {$n = 5$}; &
+	\node[regular polygon, regular polygon sides = 7] {$n=7$}; &
+	\node[regular polygon, regular polygon sides = 9] {$n=9$}; &
+	\node[ann]{Regular polygon}; \\
+	\node[star, star points = 4] {$p = 4$}; &
+	\node[star, star points = 7, star point ratio = 0.8] {$p=7$}; &
+	\node[star, star points = 10] {$p = 9$}; &
+	\node[ann]{Star}; \\
+};
+\end{tikzpicture}
+
+\end{document}
+\end{code}
+
+Mais tu peux tout faire avec des \verb?node?. Par exemple, tu peux les placer à l'intérieur d'un \verb?\draw? pour ajouter de l'information (texte ou symbole). L'intérêt ? Pendant que tu traces ton dessin, tu associes l'information, au lieu de l'ajouter manuellement. C'est très pratique si tu modifies ton dessin ou si les coordonnées sont difficiles à déterminer. \\
+
+Reprenons un ancien exemple, qui devrait te sembler plus clair désormais :
+
+\begin{code}{Ajouter de l'information avec des \texttt{node}}
+\documentclass[a4paper, 12pt]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+
+\usepackage{tikz}
+
+
+\begin{document}
+
+\begin{tikzpicture}
+\draw[gray, dotted] (0,-1) grid (3,1); % Une trame de fond, pour aider
+
+% Les node en cascade, c'est le nec plus ultra !
+\draw (0,0) node[circle, fill = red, inner sep = 2pt] {} node[left, inner sep = 5pt] {Début} --++ (1,1) --++ (2,0) --++ (0,-1) node[circle, fill = blue, inner sep = 2pt] {} node[right] {Fin}; % Option radius possible pour définir la taille du point mais inner sep plus efficace
+
+\draw (0,0) -- (1,-1) node[right, align = left, font = \small] {Nouvelle \\ branche}; % Positionnement du texte par rapport au centre du noeud
+% Possibilités de possitionnement : above, below, left et right
+% Des combinaisons comme "above left" sont possibles (ordre à respecter)
+
+% Saut de ligne "\\" licite dans le node si et seulement si "align = ..." précisé
+\end{tikzpicture}
+
+\end{document}
+\end{code}
+
+Bon, je crois avoir à peu près fait le tour en ce qui concerne la base pour les  \verb?node?. Voyons une dernière application, plus poussée : la création de graphes et d'organigrammes.
+
+\section{Création d'un organigramme}
+
+Moi-même j'expérimente ces nouveautés donc je suis encore loin d'en maîtriser toutes les subtilités. Je risque donc ne pas être aussi exhaustif que je le souhaite. Je vais donc expliquer le principe de base avant de te laisser examiner trois exemples. \\
+
+Sous \texttt{TikZ}, un \verb?node? est constitué de points d'ancrage, répartis de la manière suivante :
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\node[draw = Gray!70, fill = White, text = RedOrange, font = \LARGE{}, line width = 8pt, rounded corners = 8pt, minimum width = 0.5\linewidth, minimum height = 3cm, text width = 0.25\linewidth] (master) at (0,0) {node \og N \fg{}};
+
+% Les  points d'ancrage les plus intuitifs
+\foreach \anchor in {north, north east, east, south east, south, south west, west, north west} {\node at (master.\anchor) {$\times$};}
+
+\node[above = 5pt] at (master.north) {\texttt{N.north}};
+\node[above right = 5pt] at (master.north east) {\texttt{N.north east}};
+\node[right = 5pt] at (master.east) {\texttt{N.east}};
+\node[below right = 5pt] at (master.south east) {\texttt{N.south east}};
+\node[below = 5pt] at (master.south) {\texttt{N.south}};
+\node[below left = 5pt] at (master.south west) {\texttt{N.south west}};
+\node[left = 5pt] at (master.west) {\texttt{N.west}};
+\node[above left = 5pt] at (master.north west) {\texttt{N.north west}};
+
+% Les autres points d'ancrage
+\node[text = Cyan] at (master.13) {$\times$};
+\node[text = Green] at (master.base) {$\times$};
+\node[text = Green] at (master.text) {$\times$};
+\node[text = Orchid] at (master.center) {$\times$};
+
+\node[right = 5pt, text = Cyan] at (master.13) {\texttt{N.13} (angle)};
+\node[below = 5pt, text = Green] at (master.base) {\texttt{N.base}};
+\node[below left, yshift = -5pt, text = Green] at (master.text) {\texttt{N.text}};
+\node[above = 5pt, text = Orchid] at (master.center) {\texttt{N.center = N}};
+\end{tikzpicture}
+\caption{Vue d'un \texttt{node} et de ses points d'ancrage}
+\end{figure}
+
+Voyons maintenant comment utiliser cette notion pour placer deux boîtes. Nous allons :
+
+\begin{enumerate}
+\item placer un premier \verb?node?, par défaut en $(0,0)$,
+
+\item paramétrer ce \verb?node? pour qu'il ressemble à une boîte,
+
+\item placer un second \verb?node? relativement au premier.
+\end{enumerate}
+
+L'avantage de cette méthode ? Il faut juste placer un \verb?node? et tout peut se faire relativement à ce dernier. Et grâce aux points d'ancrage, relier deux \verb?node? devient très aisé. 
+
+Enfin, \textbf{il est possible de créer un style global pour tous les \verb?node?}. Il faut juste respecter la syntaxe suivante après la déclaration de l'environnement \verb?tikzpicture? : \begin{center} \verb?[every node/.style = {options}]? \end{center}
+
+Le code d'initiation est alors le suivant :
+
+\begin{code}{Initiation aux points d'ancrage}
+\documentclass[a4paper, 12pt]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+
+\usepackage{tikz}
+\usetikzlibrary{calc}
+
+
+\begin{document}
+
+\begin{tikzpicture}[every node/.style = {draw = orange, very thick, minimum width = 3cm, minimum height = 2cm}]
+% Création du node "master" - Options pour avoir une boîte
+\node (master) at (0,0) {Boîte 1};
+
+% Création du deuxième node relativement à "master"
+\node[anchor = west] at (master.east) {Boîte 2};
+% Positionnement de l'ancrage ouest de la boîte 2 sur l'ancrage est de "master"
+
+% Troisième node différent relié à "master"
+\node[draw = green, fill = gray, minimum width = 2cm] (box) at (2,-3) {Boîte 3};
+
+% Tracé du trait automatisé --> placement très précis entre les deux boîtes (milieu vertical)
+\coordinate (middle) at ($(master.south)!0.5!(box.north)$); % Création du point milieu entre les ancres master.south et box.north --> tikzlibrary : calc
+\draw (master.south) -- (master.south |- middle) -- (middle -| box.north) -- (box.north);
+
+% Tracé du trait manuellement
+%\draw (master.south) --++ (0,-0.3) -| (box.north);
+% -| : départ horizontal, arrivée verticale du trait
+\end{tikzpicture}
+
+\end{document}
+\end{code}
+
+Et voici maintenant 3 exemples un peu plus détaillés que je te laisse analyser si tu es intéressé :
+
+\begin{code}{Organigramme 1 : positionnement de boîtes par ancrage}
+\documentclass[a4paper, 12pt]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+
+\usepackage[dvipsnames]{xcolor}
+
+%\PassOptionsToPackage{dvipsnames}{xcolor} % Si erreur avec xcolor --> Enlever le commentaire sur cette ligne et mettre la ligne précédente en commentaire
+\usepackage{tikz}
+
+
+\begin{document}
+
+% Boite principale en (0,0)
+% Positionnement des en-têtes de chaque sous-boîte
+% Tracé des traits automatisés - Gestion des styles
+
+\begin{tikzpicture}[every node/.style = {align = center, draw = Black, fill = RoyalPurple!70, line width = 1.5pt, text width = 3cm, minimum width = 3.5cm, minimum height = 1cm, text = White}]
+\node[text width = 2.5cm, minimum width = 3cm] (master) at (0,0) {\Large{}Manager};
+
+\tikzstyle{bigbox} = [text width = 3.2cm, minimum width = 3.5cm, minimum height = 3cm]
+
+\node (boxa) at (-6,-3) {\large{}Team A};
+\node[bigbox, anchor = north] at (boxa.south) {Commercial \linebreak \linebreak Support function};
+
+\node (boxb) at (-2,-3) {\large{}Team B};
+\node[bigbox, anchor = north] at (boxb.south) {PHP \linebreak \linebreak JavaScript};
+
+\node (boxc) at (2,-3) {\large{}Team C};
+\node[bigbox, anchor = north] at (boxc.south) {Support \linebreak \linebreak Supervision};
+
+\node (boxd) at (6,-3) {\large{}Team D};
+\node[bigbox, anchor = north] at (boxd.south) {Report \& KPI \linebreak \linebreak Financial management};
+
+\foreach \point in {a, b, c, d} {\draw[very thick] (master.south) --++(0,-1cm) -| (box\point.north);} % Tracé automatisé : -| = départ horizontal, arrivée verticale
+%\draw (master.south) --++ (0,-1) --++ (-2,0) --++ (0,-1) ++ (0,1) --++ (-4,0) --++ (0,-1) ++ (6,1) --++ (2,0) --++ (0,-1) ++ (0,1) --++ (4,0) --++ (0,-1); % Ancien tracé manuel moins pratique
+\end{tikzpicture}
+
+% Pour un meilleur centrage de l'organigramme : environnement center et agrandir un peu les marges
+
+\end{document}
+\end{code}
+
+\begin{code}{Organigramme 2 : utilisation d'un arbre}
+\documentclass[a4paper, 12pt]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+
+\usepackage[dvipsnames]{xcolor}
+
+%\PassOptionsToPackage{dvipsnames}{xcolor} % Si erreur avec xcolor --> Enlever le commentaire sur cette ligne et mettre la ligne précédente en commentaire
+\usepackage{tikz}
+\usetikzlibrary{trees}
+
+
+\begin{document}
+
+% Utilisation d'un arbre
+% Syntaxe : child { node {Texte} }
+% Jouer sur l'encapsulation de plusieurs child pour faire des ramifications
+
+% Pleins d'options globales disponibles : 
+% --> gestion de la distance (général ou pour chaque niveau) = sibling distance
+% --> format du trait entre deux niveaux = edge from parent 
+
+\begin{tikzpicture}[level 1/.style = {sibling distance = 17em}, level 2/.style = {sibling distance = 8em}, every node/.style = {shape = rectangle, rounded corners, draw, align = center, top color = white, bottom color = blue!20}, edge from parent/.style = {draw, edge from parent path = {(\tikzparentnode.south) -- +(0,-8pt) -| (\tikzchildnode)}}, level distance = 50pt] % Pas de gestion automatique de la taille et de l'espacement
+\node {Prenom Nom \\ Chef}
+	child { node {Prenom Nom \\ Sous-chef}
+		child { node {Prenom Nom \\ Esclave}}
+		child { node {Prenom Nom \\ Esclave}}
+	}
+	child { node {Prenom Nom \\ Sous-chef}	
+		child { node {Prenom Nom \\ Mineur}
+			child { node {Prenom Nom \\ Stagiaire}}
+			child { node {Prenom Nom \\ Stagiaire}}
+			child { node {Prenom Nom \\ Stagiaire}}
+		}	
+		child { node {Prenom Nom \\ Esclave}}
+	};
+\end{tikzpicture}
+
+\end{document}
+\end{code}
+
+\begin{code}{Organigramme 3 : autre utilisation d'un arbre}
+\documentclass[a4paper, 12pt]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+
+\usepackage[dvipsnames]{xcolor}
+
+%\PassOptionsToPackage{dvipsnames}{xcolor} % Si erreur avec xcolor --> Enlever le commentaire sur cette ligne et mettre la ligne précédente en commentaire
+\usepackage{tikz}
+\usetikzlibrary{trees}
+
+
+\begin{document}
+
+% L'arbre précédent est plutôt bien mais est plus adapté au format paysage et s'il y a peu de sous-divisons
+% Ou alors amélioration des sous-divisions comme ci-après
+
+% Création de styles avec un nom dans l'appel de l'environnement
+
+\begin{tikzpicture}[man/.style = {rectangle, draw, fill = blue!20}, woman/.style = {rectangle, draw, fill = red!20, rounded corners = .8ex}, grandchild/.style = {grow = down, xshift = 1em, anchor = west, edge from parent path = {(\tikzparentnode.south) |- (\tikzchildnode.west)}}, first/.style = {level distance = 6ex}, second/.style = {level distance = 12ex}, third/.style = {level distance = 18ex}, level 1/.style = {sibling distance = 5em}]
+% Parents
+\coordinate
+	child[grow = left] {node[man, anchor = east] {Jim}}
+	child[grow = right] {node[woman,anchor = west] {Jane}}
+	child[grow = down, level distance = 0ex][edge from parent fork down]
+% Children and grandchildren
+	child{node[man] {Alfred}
+		child[grandchild, first] {node[man] {Joe}}
+		child[grandchild, second] {node[woman] {Heather}}
+		child[grandchild, third] {node[woman] {Barbara}}
+	}
+	child{node[woman] {Berta}
+		child[grandchild, first] {node[man] {Howard}}
+	}
+	child {node[man] {Charles}}
+	child {node[woman] {Doris}
+		child[grandchild, first] {node[man] {Nick}}
+		child[grandchild, second] {node[woman] {Liz}}
+	};
+\end{tikzpicture}
+
+\end{document}
+\end{code}
+
+\section{Les possibilités offertes par \texttt{TikZ}}
+
+\texttt{TikZ} met à dispositions de très nombreuses librairies pour réaliser ``tes envies les plus folles'' \dots{} enfin, tout ce que tu as besoin de dessiner !
+
+Pour utiliser ces librairies, il suffit d'utiliser la commande suivante dans le préambule, juste après l'appel à \verb?tikz? : \begin{center} \verb?\usetikzlibrary{nom_librairie}? \end{center}
+
+Ces librairies sont détaillées à la partie V du guide officiel de \texttt{TikZ}, ainsi que sur le site suivant : \url{http://tex.stackexchange.com/questions/42611/list-of-available-tikz-libraries-with-a-short-introduction}. En voici un aperçu résumé :
+
+\begin{itemize}[label = \ding{118}, itemsep = \baselineskip] % Aération des item
+\item \verb?angles? : pour faciliter le dessin d'angles,
+
+\item \verb?arrows? : pour de nouvelles pointes de flèches, personnalisables,
+
+\item \verb?automata? : pour dessiner des automates finis (diagrammes d'état) et des machines de Turing,
+
+\item \verb?babel?,
+
+\item \verb?backgrounds? : pour créer des arrières-plans colorés dans l'environnement \verb?tikzpicture?. \`A essayer : peut-être qu'il y a un intérêt,
+
+\item \verb?calc? : pour faire des calculs, généralement sur les coordonnées,
+
+\item \verb?calendar? : pour créer des calendriers,
+
+\item \verb?chains? : pour créer des chaînes,
+
+\item \verb?circuits? : pour dessiner des circuits électriques. Il existe aussi le package \verb?circuitikz?,
+
+\item \verb?decorations? : pour pouvoir appliquer des transformations à des chemins (\verb?path?) et les décorer.,
+
+\item \verb?er? : pour des dessiner des diagrammes entité-association (er = entity-relationship),
+
+\item \verb?fadings? : pour estomper les couleurs,
+
+\item \verb?fit? : pour créer un \verb?node? qui doit contenir des coordonnées définies,
+
+\item \verb?folding? : pour créer des patrons ou des objets à plier,
+
+\item \verb?intersections? : pour calculer des intersections de chemins (\verb?path?),
+
+\item \verb?math? : pour définir des fonctions mathématiques et exécuter des opérations mathématiques,
+
+\item \verb?matrix? : options et styles supplémentaires pour la création d'une matrice de \verb?node?,
+
+\item \verb?mindmap? : pour créer des cartes heuristiques. Le c{\oe}ur est placé au centre, tandis que les éléments qui en découlent sont créés à partir de branches (\verb?children?, comme pour les organigrammes ou les arbres). Personnalisation complète possible et annotations disponibles,
+
+\item \verb?patterns? : pour définir de nouveaux motifs pour du remplissage,
+
+\item \verb?petri? : pour dessiner des réseaux de Petri,
+
+\item \verb?plothandlers?,
+
+\item \verb?plotmarks?,
+
+\item \verb?shadings? et \verb?shadows? : pour réaliser des ombrages,
+
+\item \verb?shapes? : pour de nouveaux formats de \verb?node? (ellipse, diamant, étoile, polygone, \dots{}),
+
+\item \verb?spy? : pour faire des zooms,
+
+\item \verb?trees? : pour dessiner des arbres (de possibilités). \\
+\end{itemize}
+
+% circuit élec, page 510 tuy'sss officielle TikZ
+
+Enfin, il existe aussi d'autres packages pour agrémenter les dessins sous \LaTeX{}. C'est par exemple le cas de \verb?pgfornament?, qui mérite le détour pour fournir beaucoup d'ornements intéressants.
+
+\begin{figure}[H]
+\centering
+\pgfornament[color = RedOrange, width = 0.6\linewidth]{60}
+\caption{Un premier aperçu du package \texttt{pgfornament}}
+\end{figure}
+
+\section{Le fond d'écran \LaTeX{}}
+
+Loin d'avoir tout expliqué sur \texttt{TikZ}\footnote{Le guide officiel fait plus de 1000 pages donc tu penses bien que je n'ai fait qu'effleurer le champ des possibles.}, les exemples que j'ai élaborés et mis à disposition au sein de ce guide donnent quand même beaucoup d'informations et de possibilités.
+
+Naturellement, je suis loin d'être complètement exhaustif et je me suis efforcé d'aborder un maximum de notions fondamentales. Lors de la prochaine modification de ce guide, il y a des chances que je revienne sur cette partie, tant pour améliorer mes explications, mes exemples et l'affichage du code. \\
+
+En tout cas, je me suis amusé à réaliser un petit fond d'écran pour mon ordinateur. Naturellement, il prône l'utilisation du \LaTeX{} et joue un peu sur la fibre patriotique.
+
+Il est à disposition si après si tu veux réaliser une capture d'écran pour l'utiliser toi aussi. Il peut aussi constituer un bon entraînement si tu veux dessiner sous \texttt{TikZ}.
+
+\newpage
+
+\includepdf[pages = -, fitpaper]{fond_TikZ}

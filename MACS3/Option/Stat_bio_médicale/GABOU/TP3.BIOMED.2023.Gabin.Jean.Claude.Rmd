@@ -1,0 +1,378 @@
+---
+title: 'TP: régression logistique'
+output:
+  html_document:
+    code_folding: show
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+  pdf_document:
+    toc: yes
+    toc_depth: '2'
+---
+
+**Important:** Ceci est un document R notebook. En cliquant sur knit vous aurez le choix entre un document html, pdf ou word. Le TP doit être rendu sous la forme d'un fichier NOM_prenom_RegLog.html. Il est à remettre dans moodle. CTRL+Alt+i permet d'ouvrir une cellule de code compilable.
+
+# Ajustement d'un modèle logistique
+
+Afin d'ajuster la régression logistique à des données et produire un modèle, nous allons utiliser la fonction `glm` de `R` avec l'argument `family` prenant la valeur `binomial`. La fonction `glm` (generalyzed linear model) est une fonction très générale permettant de manipuler différents modèles de régression. La commande `family=binomial` permet de spécifier que nous voulons utiliser un modèle logistique. La première étape consiste à générer une dataframe.
+
+1.  Dans le programme ci-dessous, la variable à expliquer est `y` et les variables explicatives (aussi appelées covariables ou var. dépendantes) sont `x1` et `x2`. Les données contenues dans `datum` sont-elles générées selon un modèle de régression logistique ?
+
+```{r}
+set.seed(2)
+n=500
+x1=rexp(n,1/5)
+x2=floor(runif(n,18,100))
+y=rep(0,n)
+for(i in 1:n){
+  r=x1[i]
+  y[i]=rbinom(1,1,exp(-r/2))
+}
+
+datum=data.frame(x1=x1,x2=x2,y=y)
+```
+
+2.  Dans le programme ci-dessous, un modèle de régression logistique est ajusté aux données générées à la question précédente. Ce modèle, rangé dans la variable `model`, est calculé par rapport aux variables dépendantes `x1` et `x2` (`y ~ x1+x2`). On note qu'il s'agit de l'ensemble des variables autres que `y` contenues dans `datum` et qu'à ce titre la commande aurait pu être remplacé par `y ~ .`. La commande `print(model)` donne les attributs du modèle: interpréter `Null Deviance` et `Residual Deviance`. Quels sont les valeurs des paramètres de la régression logistique $b_0, b_1$ et $b_2.$
+
+```{r}
+model <- glm(y ~ x1+x2, data = datum, family = binomial)
+print(model)
+```
+
+Comme attendu, le coefficient associé à x2 est presque nul
+
+3.  La fonction suivante permet d'effectuer des tests de Wald sur les coefficients: $H_0:b_i=0.$ Quel coefficient pourrait être éliminer d'après ces résultats ?
+
+```{r}
+summary(model)
+```
+
+Le coefficient b2, qui correspond à x2, a une grande p-valeur donc on ne peut pas rejeter l'hypothèse H0 : 'b2 est nul'. Donc on peut éliminer b2, ie x2 n'influe pas sur y.
+
+4.  Générer un nouveau model de la régression logistique ne prenant en compte que la variable `x1`. Comment est la deviance du nouveau modèle par rapport à celle de l'ancien ? Interpréter.
+
+    ```{r}
+    model <- glm(y ~ x1, data = datum, family = binomial)
+    print(model)
+    ```
+
+La deviance, indiquée par Residual Deviance, ne change quasiment pas. Le modèle contenant uniquement x1 est aussi vraisemblable que le modèle contenant x1 & x2.
+
+# Données générées sous un modèle logistique avec interaction
+
+1.  Créer une dataframe `data` contenant trois vecteurs de tailles 1000: `x1`, `x2` et `y`. Les échantillons contenus dans `x1` et `x2` seront générées selon des lois normales $\mathcal{N}(0,1)$ et $\mathcal{N}(0,4).$ On note $\pi=\mathbb{P}(Y=1 \mid X_1=x_1,X_2=x_2).$ La variable $y$ sera générée selon le modèle de régression logistique avec interaction suivant: $$\log(\dfrac{\pi}{1-\pi})=-2+x_1+x_2+20\times x_1\times x_2.$$
+
+    ```{r}
+    n  = 1000
+    x1 = rnorm(n,0,1)
+    x2 = rnorm(n,0,2)
+    y=rep(0,n)
+    for (i in 1:n){
+    pi_y = 1+exp(-(-2+x1[i]+x2[i]+20*x1[i]*x2[i]))
+    pi_y = 1 / pi_y
+    y[i] = rbinom(1,1,pi_y)
+    }
+    ```
+
+2.  Effectuer l'ajustement d'un modèle de régression logistique sur la dataframe `data` en utilisant toutes les variables dépendantes de cette dataframe : `y ~ .`. Le modèle obtenu sera nommé `model`. Que pensez-vous de la qualité de ce modèle sur la base de l'analyse de la déviance par raport à la déviance nulle ?
+
+    ```{r}
+    # datum contient la variable produit x1*x2, utilisée en fin d'exercice
+    datum=data.frame(x1=x1,x2=x2,x12=x1*x2, y=y)
+    model <- glm(y ~ x1+x2, data = datum, family = binomial)
+    print(model)
+    ```
+
+    Le modèle n'est que très peu plus vraisemblable que le modèle nul.
+
+3.  Effectuer un test du rapport de vraisemblance, dit test de Wilks, et commenter le résultat. *Indication:* Le test de Wilks utilise la déviance nulle et résiduelle (`null.deviance` et `deviance`), et les degrés de liberté nuls et résiduels (`df.null` et `df.residual`) du modèle logistique.
+
+    ```{r}
+    wilks = -2*(model$deviance - model$null.deviance)
+    print(wilks)
+    quantile=qchisq(0.95, df=model$df.null-model$df.residual)
+    print(quantile)
+    print("H0: {le modèle nul est le vrai modèle}")
+    if (wilks>quantile){
+      print('On rejette H0')
+    } else {
+      print('On conserve H0')
+    }
+    ```
+
+4.  Proposer un modèle de régression logistique plus performant pour s'ajuster aux données `data`.
+
+    ```{r}
+    model <- glm(y ~ x1+x2+x12, data = datum, family = binomial)
+    print(model)
+    ```
+
+    Ce modèle est beaucoup plus vraisemblable que le modèle nul, c'est le modèle qui a généré les données.
+
+    Le test de Wilks nous indique t-il que ce modèle est meilleur que le modèle nul?
+
+    ```{r}
+
+    wilks = -2*(model$deviance - model$null.deviance)
+    print(wilks)
+    quantile=qchisq(0.95, df=model$df.null-model$df.residual)
+    print(quantile)
+    print("H0: {le modèle nul est le vrai modèle}")
+    if (wilks>quantile){
+      print('On rejette H0')
+    } else {
+      print('On conserve H0')
+    }
+    ```
+
+# Analyse de données: prédire la probabilité d'apparition du diabète en fonction de la taille, du poids et de l'âge.
+
+1.  la ligne suivante importe les données et les rangent dans la dataframe `data`. Il s'agit du poids, de la taille et de l'âge de 1000 individus ayant le diabète ou non (`y` vaut resp. 1 ou 0). Obtenir un résumé de la dataframe en utilisant la fonction `summary`. Combien de personnes ont le diabète ? Que représente la variable `X` (en tenire compte ou non, en conséquence de votre réponse) ?
+
+```{r}
+data<-read.csv(file ='data_diabetis') 
+```
+
+2.  Ajuster une régression logistique à ces données. Les coefficients de la régression sont-ils tous utiles (tests de Wald) ?
+
+    ```{r}
+    model <- glm(y ~ taille+poids+age, data = data, family = binomial)
+    print(model)
+    summary(model)
+    ```
+
+    Toutes les variables sont importantes
+
+3.  Proposer une amélioration du modèle en construisant une ou des nouvelles variables à l'aide du poids et de la taille. Tester la pertinence de ce nouveau modèle à l'aide d'un test de Wilks.
+
+    ```{r}
+    attach(data)
+    pt = taille * poids
+    datum=list(taille=taille,poids=poids, age=age , pt=pt,y=y)
+    model1 <- glm(y ~ taille+poids+age+pt, data = datum, family = binomial)
+    wilks = -2*(model1$deviance - model$deviance)
+    quantile=qchisq(0.95, df=model$df.residual-model1$df.residual)
+    print("H0: {le modèle sans la variable taille*poids est le vrai modèle}")
+    if (wilks>quantile){
+      print('On rejette H0')
+    } else {
+      print('On conserve H0')
+    }
+    ```
+
+    Ce nouveau modèle n'est pas pertinent.
+
+# Jeu de données sur les maladies cardiaques: questions guidées
+
+Nous allons étudier un ensemble de données sur les maladies cardio-vasculaires. Celui-ci provient du site UCI Machine Learning Repository, une banque de jeux de données. En particulier, nous travaillons dans cette partie sur les données `processed.cleveland.data` du jeu de données [heart disease](https://archive.ics.uci.edu/ml/datasets/heart+disease).
+
+On cherche à expliquer ou à prédire la présence d'une maladie : variable dépendante `Diagnosis`. Pour cela, on suppose les autres covariables des patients connues.
+
+1.  Charger le jeu de données dans le dossier contenant ce fichier `.Rmd`. Utiliser la fonction `read.csv` pour transporter les données dans votre session `R` (rem: `header=F` en option de la fonction). Le dataframe prendra le nom `heart_disease_dataset`
+
+```{r}
+heart_disease_dataset <- read.csv(file = "processed.cleveland.data", header = F)
+```
+
+2.  Les lignes ci-dessous permettent de rajouter le nom des colonnes. Décrire le jeu de données. La variable `Diagnosis` prend les valeurs: 0, 1, 2, 3, 4 correspondant à différents états des patients (0: pas malade). Nous cherchons à prédire la présence ou non de la maladie: Remplacer les valeurs différentes de 0 par un 1.
+
+```{r}
+#Prepare column names
+names <- c("Age",
+           "Sex",
+           "Chest_Pain_Type",
+           "Resting_Blood_Pressure",
+           "Serum_Cholesterol",
+           "Fasting_Blood_Sugar",
+           "Resting_ECG",
+           "Max_Heart_Rate_Achieved",
+           "Exercise_Induced_Angina",
+           "ST_Depression_Exercise",
+           "Peak_Exercise_ST_Segment",
+           "Num_Major_Vessels_Flouro",
+           "Thalassemia",
+           "Diagnosis")
+#Apply column names to the dataframe
+colnames(heart_disease_dataset) <- names
+#library(tidyverse)
+#Glimpse data to verify new column names are in place, only with tidyverse library
+#
+```
+
+```{glimpse(heart_disease_dataset)}
+head(heart_disease_dataset)
+summary(heart_disease_dataset)
+
+```
+
+```{r}
+heart_disease_dataset$Diagnosis[which(heart_disease_dataset$Diagnosis > 1)] = 1
+```
+
+3.  Utiliser la librairie `caret` et la fonction `createDataPartition` pour séparer le jeu de données en un échantillon d'apprentissage, appelé `data.A`, et un échantillon test, appelé `data.T`
+
+    ```{r}
+    library(caret)
+    #https://www.statology.org/createdatapartition-in-r/
+    train_indices = createDataPartition(heart_disease_dataset$Diagnosis, times=1, p = 0.8, list=F)
+    data.A = heart_disease_dataset[train_indices , ]
+    data.T = heart_disease_dataset[-train_indices , ]
+    ```
+
+4.  Ajuster une régression logistique aux données et imprimer le modèle.
+
+    ```{r}
+    model <- glm(Diagnosis ~ ., data = data.A, family = binomial)
+    print(model)
+    ```
+
+5.  Imprimer la déviance du modèle et la déviance du modèle nul (moyenne). Calculer le R2 de Mac Fadden, de Cox et Snell et de Nagelkerke. Effectuer un test du rapport de vraisemblance pour la validité global du modèle (par rapport au modèle nulle).
+
+    ```{r}
+    print(model$deviance)
+    print(model$null.deviance)
+    ```
+
+    ```{r}
+    # McFadden's R²
+    RMF = 1 - (model$deviance / model$null.deviance)
+    RMF
+    ```
+
+    ```{r}
+    temp = exp(-0.5*model$null.deviance) / exp(-0.5*model$deviance)
+    n = nrow(data.A)
+    # Cox & Snell's R²
+    RCS = 1 - (temp)^(2/n)
+    RCS
+    ```
+
+    ```{r}
+    RCSM = 1 - exp(2*model$null.deviance / n)
+    # Nagelkerke's R²
+    RN = RCS / RCSM
+    RN
+    ```
+
+    ```{r}
+    wilks = -2*(model$deviance - model$null.deviance)
+    print(wilks)
+    quantile=qchisq(0.95, df=model$df.null-model$df.residual)
+    print(quantile)
+    print("H0: {le modèle nul est le vrai modèle}")
+    if (wilks>quantile){
+      print('On rejette H0')
+    } else {
+      print('On conserve H0')
+    }
+    ```
+
+6.  Utiliser un test de Wald (fonction `summary` appliquée à `model`). Y a-t-il des variables qui ne semblent pas pertinentes au seuil de 5%.
+
+    ```{r}
+    summary(model)
+    ```
+
+    L'intercept et les 3 variables Thalassemia car la p_value associée à ces variables est \> à 95%.
+
+7.  Utiliser la fonction `predict` (voir documentation R en ligne) pour prédire la classe de chaque individus dans `data.T`. On utilisera l'argument `type=response`. Qu'obtient-on si on l'enlève?\
+    Note: Quand la proba d'un individu est supérieur à 0.5 on considère que la prédiction est 1; la prédiction est 0, sinon.
+
+    ```{r}
+    proba = predict(model, data.T, type="response")
+    proba2 = predict(model, data.T)
+    y_pred = rep(0, nrow(data.T))
+    y_pred[which(proba>= 0.5)] = 1
+    ```
+
+    Appeler predict sans type="response" renvoie la valeur de la fonction logit
+
+    avec "response" renvoie la probabilité d'être malade.
+
+8.  Imprimer la matrice de confusion et le taux d'erreur des prédictions faîtes sur `data.T` à l'aide de la fonction `table`. Y a-t-il une différence notable entre le taux d'erreur sur les données d'apprentissage et les données tests ?
+
+    ```{r}
+    #https://www.digitalocean.com/community/tutorials/confusion-matrix-in-r
+    cm = confusionMatrix(data=as.factor(y_pred), reference = as.factor(data.T$Diagnosis))
+    cm
+    ```
+
+    86% de réussite.
+
+    Avec les données d'apprentissage:
+
+    ```{r}
+    proba = predict(model, data.A, type="response")
+    proba2 = predict(model, data.A)
+    y_pred = rep(0, nrow(data.A))
+    y_pred[which(proba>= 0.5)] = 1
+    cm = confusionMatrix(data=as.factor(y_pred), reference = as.factor(data.A$Diagnosis))
+    cm
+    ```
+
+    86%, ce n'est pas mieux, c'est bon signe, cela signifique que le modèle n'est pas suradapté aux données (overfitting).
+
+    <div>
+
+    # Partie libre
+
+    </div>
+
+Dans cette partie, on cherche à améliorer et évaluer plus finement le modèle sur le jeu de données `heart_disease_dataset`. Les résultats même négatifs peuvent être intéressants si ils sont bien justifiés et présentés. Axes de développements:
+
+-   cross-validation (créer une seule dataframe et utiliser le package *caret*)
+
+    ```{r}
+    # change Diagnosis type to Factor, so that caret treats it as a classification problem, not sure if it's necessary
+    heart_disease_dataset$Diagnosis = as.factor(heart_disease_dataset$Diagnosis)
+    #On réalise la validation croisée k_fold avec k = 10
+    train_control<- trainControl(method="cv", number=10)
+    # L'entrainement (sur 9/10 blocs) et le test sur le bloc restant, sont automatisés par la fonction train du module caret
+    model<- train(Diagnosis~., data=heart_disease_dataset, trControl=train_control, method="glm", family='binomial')
+    # le résultat moyen est indiqué ici
+    model
+    ```
+
+    La précision de 82% est inférieure à celle obtenue précédemment.
+
+-   éliminer des variables explicatives superflues (librairie `MASS` et fonction `stepAIC`).
+
+    ```{r}
+
+    ```
+
+-   modifier le modèle pour qu'ils tiennent comptent de l'interaction entre variables (modification des dataframes).
+
+```{=html}
+<!-- -->
+```
+    ```{r}
+
+    ```
+
+-   étendre le modèle aux ensembles de données `processed.hungarian.data`, `processed.switzerland.data`.
+
+    ```{r}
+    clev <- read.csv(file = "processed.cleveland.data", header = F)
+    switz <- read.csv(file = "processed.switzerland.data", header = F)
+    hung <- read.csv(file = "processed.hungarian.data", header = F)
+    data = rbind(clev, switz, hung)
+    names <- c("Age",
+               "Sex",
+               "Chest_Pain_Type",
+               "Resting_Blood_Pressure",
+               "Serum_Cholesterol",
+               "Fasting_Blood_Sugar",
+               "Resting_ECG",
+               "Max_Heart_Rate_Achieved",
+               "Exercise_Induced_Angina",
+               "ST_Depression_Exercise",
+               "Peak_Exercise_ST_Segment",
+               "Num_Major_Vessels_Flouro",
+               "Thalassemia",
+               "Diagnosis")
+    #Apply column names to the dataframe
+    colnames(data) <- names
+    data$Diagnosis[which(data$Diagnosis > 1)] = 1
+    ```
